@@ -1,0 +1,45 @@
+<?php
+// $Id$
+
+// The Schema module uses itself for installation and uninstallation
+// but may not be loaded yet, so it needs to load itself.
+function schema_self_load() {
+  $filename = drupal_get_filename('module', 'schema');
+  require_once "./$filename";
+  schema_require();
+}
+
+function schema_install() {
+  schema_self_load();
+
+  // This gets a bit meta:
+  // 
+  // 1.  The Schema module defines hook_schema() which any module can
+  // use to define its database tables. 
+  //
+  // 2.  Any module that wants to can then replace all CREATE TABLE
+  // statements in its hook_install() with:
+  //
+  //       $my_schema = module_invoke('my_module', 'schema');
+  //       schema_create_schema($my_schema);
+  //
+  // 3.  The Schema module implements hook_schema() as schema_schema()
+  // to define its own tables (though presently it doesn't use
+  // them!).  Thus, it calls module_invoke('schema', 'schema') to get
+  // its own schema, then uses schema_create_schema as above to create
+  // the tables.
+  //
+  // Got it?
+
+  $my_schema = module_invoke('schema', 'schema');
+  schema_create_schema($my_schema);
+}
+
+function schema_uninstall() {
+  schema_self_load();
+
+  $my_schema = module_invoke('schema', 'schema');
+  schema_drop_schema($my_schema);
+}
+
+?>

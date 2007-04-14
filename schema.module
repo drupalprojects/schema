@@ -1,0 +1,489 @@
+<?
+// $Id$
+
+// schema_schema: The database schema for schema.module.  Used
+// (eventually) to store information about which modules own which
+// tables, each module's schema version, etc.  Currently it is really
+// only here as a demonstration.
+//
+function schema_schema() {
+  $schema['#version'] = 1;
+
+  $schema['schema_modules'] = array(
+    'name' => 'schema_modules',
+    'cols' => array(
+      'mid' => array('type' => 'int', 'not null' => '1', 'length' => 11),
+      'name' => array('type' => 'varchar', 'length' => 255, 'not null' => '1'),
+      ),
+    'keys' => array('PRIMARY' => array('mid')));
+  
+  $schema['schema_tables'] = array(
+    'name' => 'schema_tables',
+    'cols' => array(
+      'tid' => array('type' => 'int', 'not null' => '1', 'length' => 11),
+      'name' => array('type' => 'varchar', 'length' => 255, 'not null' => 1),
+      'mid' => array('type' => 'int', 'not null' => '1', 'length' => 11,
+        'join-n' => 'schema_modules.mid')),
+    'keys' => array(
+      'PRIMARY' => array('tid'),
+      'mid' => array('mid'),
+      ));
+  return $schema;
+}
+
+// schema_phpprint: Return a pretty ASCII-formatted version of a
+// $schema array.  This is nothing more than a specialized variation
+// of var_dump and similar functions and is used only as a convenience
+// to generate the PHP for existing database tables (to bootstrap
+// support for modules that previously used CREATE TABLE explicitly)
+// and for debugging.
+//
+function schema_phpprint($schema) {
+  foreach ($schema as $name => $table) {
+    if (substr($name, 0, 1) == '#') {
+      $out .= "\$schema['$name'] = '$table';\n";
+      continue;
+    }
+
+    $cols = array();
+    foreach ($table['cols'] as $colname => $col) {
+      $attrs = array();
+      foreach (array('type', 'not null', 'default', 'length') as $attr) {
+        if (isset($col[$attr])) {
+          if ($attr == 'default') {
+            $attrs[] = "'$attr' => $col[$attr]";
+          } else {
+            $attrs[] = "'$attr' => '$col[$attr]'";
+          }
+          unset($col[$attr]);
+        }
+      }
+      foreach ($col as $attr => $notused) {
+        $attrs[] = "'$attr' => '$col[$attr]'";
+      }
+      $colstr = "'$colname' => array(".implode(', ', $attrs).")";
+      $cols[] = $colstr;
+    }
+    $keys = array();
+    if (is_array($table['keys'])) {
+      foreach ($table['keys'] as $keyname => $key) {
+        $keystr = "'$keyname' => array('$key[0]'";
+        if ($key[1] == 'unique') {
+          $keystr .= ", 'unique'";
+        }
+        $keystr .= ')';
+        $keys[] = $keystr;
+      }
+    }
+    $out .= "\$schema['".$name."'] = array(\n    'cols' => array(\n         ";
+    $out .= implode(",\n         ", $cols);
+    $out .= "),\n";
+    if (count($keys) > 0) {
+      $out .= "    'keys' => array(\n         ";
+      $out .= implode(",\n         ", $keys);
+      $out .= "),\n";
+    }
+    $out .= ");\n";
+  }
+
+  return $out;
+}
+
+//////////////////////////////////////////////////////////////////////
+// Schema API functions
+//
+// To do:
+// 
+// schema_add_column
+// schema_remove_column
+// schema_add_index
+// schema_remove_index
+// schema_sync_column: Alters a column to match the provided spec,
+//   re-creating any indexes if necessary (since dropping a column
+//   drops its indexes).
+// schema_sync_table: Same as above for all columns and indexes.
+// 
+//////////////////////////////////////////////////////////////////////
+
+function schema_invoke($op) {
+  global $db_type;
+  $function = 'schema_'.$db_type.'_'.$op;
+  $args = func_get_args();
+  array_shift($args);
+  return call_user_func_array($function, $args);
+}
+
+function schema_create_schema($schema) {
+  foreach ($schema as $name => $table) {
+    if (substr($name, 0, 1) == '#') {
+      continue;
+    }
+    schema_create_table($table);
+  }
+}
+
+function schema_drop_schema($schema) {
+  foreach ($schema as $name => $table) {
+    if (substr($name, 0, 1) == '#') {
+      continue;
+    }
+    schema_drop_table($table);
+  }
+}
+    
+function schema_create_table_sql($spec) {
+  return schema_invoke('create_table_sql', $spec);
+}
+
+function schema_create_table($spec) {
+  return db_query(schema_invoke('create_table_sql', $spec));
+}
+
+function schema_drop_table($spec) {
+  return db_query('DROP TABLE {'.$spec['name'].'}');
+}
+
+// schema_compare_schemas: Compare two complete schemas.  $ref is
+// considered the reference copy and $inspect is compared against
+// it.  If $inspect is NULL, a schema for the currently database is
+// generated and used.
+function schema_compare_schemas($ref, $inspect = NULL) {
+  if (! isset($inspect)) {
+    $inspect = schema_invoke('inspect');
+  }
+
+  $info = array();
+  foreach ($ref as $module => $tables) {
+    foreach ($tables as $name => $table) {
+      if (substr($name, 0, 1) == '#') {
+        continue;
+      }
+      $status = schema_compare_table($table, $inspect[$name]);
+      $info[$status['status']][$module][$name] = $status;
+      unset($inspect[$name]);
+    }
+  }
+  foreach ($inspect as $name => $table) {
+    $info['extra'][] = $name;
+  }
+  return $info;
+}
+
+// schema_compare_table: Compare a table specification (such as one
+// returned by a module's hook_schema) to an inspected table from the
+// database.  If $inspect is not provided, its specification is
+// inspected.  
+//
+// Returns 'same', 'missing', or 'different'.
+//
+function schema_compare_table($ref, $inspect = NULL, &$reasons = array()) {
+  if (! isset($inspect)) {
+    $inspect = schema_invoke('inspect', $ref['name']);
+    $inspect = $inspect[$ref['name']];
+  }
+  if (! isset($inspect)) {
+    return array('status' => 'missing');
+  }
+
+  // $reasons could usefully be more verbose...
+
+  $col_keys = array_flip(
+    array('type', 'not null', 'length', 'unsigned', 'default'));
+  foreach ($ref['cols'] as $colname => $col) {
+    $col = array_intersect_key($col, $col_keys);
+    if (! isset($inspect['cols'][$colname])) {
+      $reasons[] = "$colname: missing";
+      continue;
+    }
+    $colcmp1 = array_diff_assoc($col, $inspect['cols'][$colname]);
+    if (count($colcmp1) != 0) {
+      foreach ($colcmp1 as $key => $val) {
+        $reasons[] = "column $colname $key: $val != ".$inspect['cols'][$colname][$key];
+      }
+    }
+    $colcmp2 = array_diff_assoc($inspect['cols'][$colname], $col);
+    if (count(array_diff_assoc($inspect['cols'][$colname], $col)) != 0) {
+      $reasons[] = "$colname: missing attributes in schema:";
+    }
+    unset($inspect['cols'][$colname]);
+  }
+  foreach ($inspect['cols'] as $colname => $col) {
+    $reasons[] = "$colname: unexpected column in database";
+  }
+
+  if (is_array($ref['keys'])) {
+    foreach ($ref['keys'] as $keyname => $key) {
+      if (! isset($inspect['keys'][$keyname])) {
+        $reasons[] = "index $keyname: missing";
+        continue;
+      }
+      // $key[0] is column list
+      if ($key[0] !== $inspect['keys'][$keyname][0]) {
+        $reasons[] = ("index $keyname columns: schema ".print_r($key[0],1).
+          ' vs. inspected '.print_r($inspect['keys'][$keyname][0],1));
+      }
+      // $key[1] is index type: unique or multi.  'multi' is the
+      // default in the reference but is required in the inspection.
+      if ($key[1] !== $inspect['keys'][$keyname][1] &&
+        !(!isset($key[1]) && $inspect['keys'][$keyname][1] == 'multi')) {
+        $reasons[] = ("index $keyname number: schema ".print_r($key,1).
+          ' vs. inspected '.print_r($inspect['keys'][$keyname][1],1));
+      }
+      unset($inspect['keys'][$keyname]);
+    }
+  }
+  if (is_array($inspect['keys'])) {
+    foreach ($inspect['keys'] as $keyname => $col) {
+      // XXX this is not an error, the dba might have added it on purpose
+      $reasons[] = "index $keyname: unexpected index";
+    }
+  }
+
+  if (count($reasons)) {
+    return array('status' => 'different', 'reasons' => $reasons);
+  }
+
+  return array('status' => 'same');
+}
+
+// Collect the results of all modules that implement hook_schema.  The
+// data structures doe not quite lend themselves to way
+// module_invoke_all() treats them.
+function schema_invoke_all() {
+  $generate = array();
+  foreach (module_implements('schema') as $module) {
+    $function = $module.'_schema';
+    $schema = $function();
+    if (is_array($schema)) {
+
+      // XXX I need to differentiate between a default 0, '', '0', and no
+      // default.  I think I want to use === instead of the collection
+      // of hacks I'm using now, but I am too tired to figure it out
+      // at the moment.
+      foreach ($schema as $tblname => $table) {
+        if (substr($tblname, 0, 1) == '#') {
+          continue;
+        }
+        foreach ($table['cols'] as $colname => $col) {
+          if (isset($col['default']) && is_string($col['default'])) {
+            $schema[$tblname]['cols'][$colname]['default'] = (
+              '\''.$schema[$tblname]['cols'][$colname]['default'].'\'');
+          }
+        }
+      }
+
+        
+      $generate[$module] = $schema;
+      foreach ($generate[$module] as $name => $table) {
+        if (substr($name, 0, 1) == '#') {
+          continue;
+        }
+        $generate[$module][$name]['name'] = $name;
+      }
+    }
+  }
+
+  return $generate;
+}
+
+//////////////////////////////////////////////////////////////////////
+// Schema administration and UI
+//////////////////////////////////////////////////////////////////////
+
+function schema_perm() {
+  return array('administer schema');
+}
+
+function schema_require() {
+  // Load all our module 'on behalfs' so they will be available for
+  // any module (including this one) that needs them.
+  $path = drupal_get_path('module', 'schema') . '/modules';
+  $files = drupal_system_listing('schema_.*\.inc$', $path, 'name', 0);
+  foreach($files as $file) {
+    // The filename format is very specific. It must be schema_MODULENAME.inc
+    $module = substr_replace($file->name, '', 0, 7);
+    if (module_exists($module)) {
+      require_once("./$file->filename");
+    }
+  }
+
+  // Load the schema database engine for the currently active database.
+  global $db_type;
+  $engine = (drupal_get_path('module', 'schema').
+    '/engines/schema_'.$db_type.'.inc');
+  if (is_file($engine)) {
+    require_once($engine);
+  }
+  else {
+    drupal_set_message('The Schema module does not support the '.$db_type.
+      ' database type ('.$engine.').  Your system will work '.
+      'but the Schema module will not to operate.', 'error');
+  }
+}
+
+function schema_menu($may_cache) {
+  $items = array();
+  if ($may_cache) {
+    $items[] = array(
+      'path' => 'admin/build/schema',
+      'title' => t('Schema'),
+      'description' => t('Manage the database schema for this system.'),
+      'callback' => 'schema_report',
+      'access' => user_access('administer schema'),
+      );
+
+    $items[] = array(
+      'path' => 'admin/build/schema/report',
+      'title' => t('Report'),
+      'type' => MENU_DEFAULT_LOCAL_TASK,
+      'callback' => 'schema_report',
+      'weight' => -10,
+      );
+
+
+    $items[] = array(
+      'path' => 'admin/build/schema/inspect',
+      'title' => t('Inspect'),
+      'type' => MENU_LOCAL_TASK,
+      'callback' => 'schema_inspect',
+      );
+
+    $items[] = array(
+      'path' => 'admin/build/schema/sql',
+      'title' => t('SQL'),
+      'type' => MENU_LOCAL_TASK,
+      'callback' => 'schema_sql',
+      );
+  } else {
+    schema_require();
+  }
+
+  return $items;
+}
+
+// This function just massages the data returned by
+// schema_compare_schemas() into HTML.
+function schema_report() {
+  $states = array(
+    'same' => ('Match'),
+    'different' => ('Mismatch'),
+    'missing' => ('Missing'),
+    'extra' => ('Extra'),
+    );
+  $descs = array(
+    'same' => 'Tables for which the schema and database agree.',
+    'different' => 'Tables for which the schema and database are different.',
+    'missing' => 'Tables in the schema that are not present in the database.',
+    'extra' => 'Tables in the database that are not present in the schema.',
+    );
+
+  $generate = schema_invoke_all();
+  $info = schema_compare_schemas($generate);
+  foreach ($info as $state => $modules) {
+    if ($state == 'extra') {
+      if (!is_array($data[$state])) {
+        $data[$state] = array();
+      }
+      $data[$state] = array_merge($data[$state], $modules);
+      $counts[$state] += count($modules);
+      continue;
+    }
+
+    foreach ($modules as $module => $tables) {
+      $counts[$state] += count($tables);
+      switch ($state) {
+        case 'same':
+        case 'missing':
+          $data[$state] .= theme('item_list', array_keys($tables), $module);
+          break;
+
+        case 'different':
+          $items = array();
+          foreach ($tables as $name => $stuff) {
+            $items[] = "<h4>$name</h4>".theme('item_list', 
+              $tables[$name]['reasons']);
+          }
+          $form = array();
+          $form[$module] = array(
+            '#type' => 'fieldset',
+            '#title' => t($module),
+            '#collapsible' => TRUE,
+            '#collapsed' => TRUE,
+            );
+          $form[$module]['content'] = array(
+            '#value' => theme('item_list', $items),
+            );
+          $data[$state] .= drupal_render($form);
+          break;
+      }
+    }
+  }
+  $data['extra'] = theme('item_list', $data['extra']);
+
+  $form = array();
+  $weight = 0;
+  foreach ($states as $state => $content) {
+    $content = $data[$state];
+    $form[$state] = array(
+      '#type' => 'fieldset',
+      '#title' => t('@state (@count)', 
+        array('@state' => $states[$state], '@count' => $counts[$state] ? $counts[$state] : 0)),
+      '#description' => t($descs[$state]),
+      '#collapsible' => TRUE,
+      '#collapsed' => TRUE,
+      '#weight' => $weight++,
+      );
+    $form[$state]['content'] = array(
+      '#type' => 'markup',
+      '#value' => $content);
+  }
+
+  $output .= <<<EOT
+<p>This page compares the live database as it currently exists against
+the combination of all schema information provided by all enabled modules.</p>
+EOT;
+
+  $output .= drupal_render($form);
+  return $output;
+}
+
+function schema_inspect() {
+  $inspect = schema_invoke('inspect');
+  $pp = schema_phpprint($inspect);
+  $output .= <<<EOT
+<p>This page shows the live database schema as it currently
+exists on this system.  The data structure is generated dynamically
+and includes all tables.  No relationship
+information (such as which tables belong to which modules or how the
+tables JOIN together) is displayed
+because that information is not represented in the database itself.
+This page is primarily useful for creating a hook_schema() function
+for modules that do not yet have one.</p>
+<textarea style="width:100%" rows="30">$pp</textarea>
+EOT;
+
+  return $output;
+}
+
+function schema_sql() {
+  $schema = schema_invoke_all();
+  foreach ($schema as $module => $tables) {
+    foreach ($tables as $name => $table) {
+      if (substr($name, 0, 1) == '#') {
+        continue;
+      }
+      $sql .= schema_create_table_sql($table);
+    }
+  }
+    
+  $output = <<<EOT
+<p>This page shows the CREATE TABLE statements that the Schema module 
+generates for each table defined by a module.</p>
+<textarea style="width:100%" rows="30">$sql</textarea>
+EOT;
+
+  return $output;
+}
+
+  
+?>
