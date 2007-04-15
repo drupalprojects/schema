@@ -72,23 +72,28 @@ function schema_mysql_inspect($name = NULL) {
 
   $res = db_query($sql, $database, $name);
   while ($r = db_fetch_array($res)) {
-    $is_nullable = ($r['IS_NULLABLE'] == 'YES' ? IS_NULL : NOT_NULL);
+    $numeric = !is_null($r['NUMERIC_SCALE']);
     $col = array();
     $col['type'] = $r['COLUMN_TYPE'];
     if (preg_match('@([a-z]+)(?:\((\d+)\))?\s*(unsigned)?@', $col['type'],
           $matches)) {
       $col['type'] = $matches[1];
       if ($matches[2]) {
-        $col['length'] = $matches[2];
+        if ($numeric) {
+          $col['disp_width'] = $matches[2];
+        } else {
+          $col['length'] = $matches[2];
+        }
       }
       if ($matches[3]) {
         $col['unsigned'] = TRUE;
       }
     }
-    $col['not null'] = ($r['IS_NULLABLE'] != 'YES');
+    $col['not null'] = ($r['IS_NULLABLE'] == 'YES' ? 0 : 1);
     if (! is_null($r['COLUMN_DEFAULT'])) {
-      if (is_null($r['NUMERIC_SCALE'])) {
-        $col['default'] = '\''.$r['COLUMN_DEFAULT'].'\'';
+      if ($numeric) {
+        // XXX floats!
+        $col['default'] = intval($r['COLUMN_DEFAULT']);
       } else {
         $col['default'] = $r['COLUMN_DEFAULT'];
       }
@@ -116,39 +121,4 @@ function schema_mysql_inspect($name = NULL) {
   return $tables;
 }
 
-function schema_mysql_inspect_old() {
-  global $db_url;
-
-  $tables = array();
-  $url = parse_url($db_url);
-  $database = substr($url['path'], 1);
-
-  // ORDER BY TABLE_NAME isn't necessary
-  $res = db_query('SELECT * FROM information_schema.COLUMNS '.
-    'WHERE TABLE_SCHEMA="%s" '.
-    'ORDER BY TABLE_NAME, ORDINAL_POSITION',
-    $database);
-  while ($r = db_fetch_array($res)) {
-    $is_nullable = ($r['IS_NULLABLE'] == 'YES' ? IS_NULL : NOT_NULL);
-    $col = array($r['COLUMN_TYPE'], $is_nullable);
-    if ($r['COLUMN_DEFAULT'] != '') {
-      $col['default'] = $r['COLUMN_DEFAULT'];
-    }
-    $tables[$r['TABLE_NAME']]['cols'][$r['COLUMN_NAME']] = $col;
-  }
-
-  // ORDER BY TABLE_NAME, INDEX_NAME isn't necessary
-  $res = db_query('SELECT * FROM information_schema.STATISTICS '.
-    'WHERE TABLE_SCHEMA="%s" '.
-    'ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX',
-    $database);
-  while ($r = db_fetch_array($res)) {
-    $tables[$r['TABLE_NAME']]['keys'][$r['INDEX_NAME']][0] .= 
-    $r['COLUMN_NAME'].', ';
-    $tables[$r['TABLE_NAME']]['keys'][$r['INDEX_NAME']][1] = 
-    ($r['NON_UNIQUE'] == 0 ? UNIQUE : NON_UNIQUE);
-  }
-
-  return $tables;
-}
 ?>

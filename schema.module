@@ -12,7 +12,7 @@ function schema_schema() {
   $schema['schema_modules'] = array(
     'name' => 'schema_modules',
     'cols' => array(
-      'mid' => array('type' => 'int', 'not null' => '1', 'length' => 11),
+      'mid' => array('type' => 'int', 'not null' => '1'),
       'name' => array('type' => 'varchar', 'length' => 255, 'not null' => '1'),
       ),
     'keys' => array('PRIMARY' => array('mid')));
@@ -20,9 +20,9 @@ function schema_schema() {
   $schema['schema_tables'] = array(
     'name' => 'schema_tables',
     'cols' => array(
-      'tid' => array('type' => 'int', 'not null' => '1', 'length' => 11),
+      'tid' => array('type' => 'int', 'not null' => '1'),
       'name' => array('type' => 'varchar', 'length' => 255, 'not null' => 1),
-      'mid' => array('type' => 'int', 'not null' => '1', 'length' => 11,
+      'mid' => array('type' => 'int', 'not null' => '1',
         'join-n' => 'schema_modules.mid')),
     'keys' => array(
       'PRIMARY' => array('tid'),
@@ -44,22 +44,26 @@ function schema_phpprint($schema) {
       $out .= "\$schema['$name'] = '$table';\n";
       continue;
     }
-
+    
     $cols = array();
     foreach ($table['cols'] as $colname => $col) {
       $attrs = array();
       foreach (array('type', 'not null', 'default', 'length') as $attr) {
         if (isset($col[$attr])) {
-          if ($attr == 'default') {
-            $attrs[] = "'$attr' => $col[$attr]";
-          } else {
+          if (is_string($col[$attr])) {
             $attrs[] = "'$attr' => '$col[$attr]'";
+          } else {
+            $attrs[] = "'$attr' => $col[$attr]";
           }
           unset($col[$attr]);
         }
       }
-      foreach ($col as $attr => $notused) {
-        $attrs[] = "'$attr' => '$col[$attr]'";
+      foreach (array_keys($col) as $attr) {
+        if (is_string($col[$attr])) {
+          $attrs[] = "'$attr' => '$col[$attr]'";
+        } else {
+          $attrs[] = "'$attr' => $col[$attr]";
+        }
       }
       $colstr = "'$colname' => array(".implode(', ', $attrs).")";
       $cols[] = $colstr;
@@ -198,12 +202,16 @@ function schema_compare_table($ref, $inspect = NULL, &$reasons = array()) {
     $colcmp1 = array_diff_assoc($col, $inspect['cols'][$colname]);
     if (count($colcmp1) != 0) {
       foreach ($colcmp1 as $key => $val) {
-        $reasons[] = "column $colname $key: $val != ".$inspect['cols'][$colname][$key];
+          $reasons[] = "column $colname: $key: ref $val != schema ".$inspect['cols'][$colname][$key];
       }
     }
     $colcmp2 = array_diff_assoc($inspect['cols'][$colname], $col);
-    if (count(array_diff_assoc($inspect['cols'][$colname], $col)) != 0) {
-      $reasons[] = "$colname: missing attributes in schema:";
+    if (count($colcmp2) != 0) {
+      foreach ($colcmp2 as $key => $val) {
+        if (isset($col_keys[$key])) {
+          $reasons[] = "$colname: $key: missing in schema";
+        }
+      }
     }
     unset($inspect['cols'][$colname]);
   }
@@ -255,24 +263,6 @@ function schema_invoke_all() {
     $function = $module.'_schema';
     $schema = $function();
     if (is_array($schema)) {
-
-      // XXX I need to differentiate between a default 0, '', '0', and no
-      // default.  I think I want to use === instead of the collection
-      // of hacks I'm using now, but I am too tired to figure it out
-      // at the moment.
-      foreach ($schema as $tblname => $table) {
-        if (substr($tblname, 0, 1) == '#') {
-          continue;
-        }
-        foreach ($table['cols'] as $colname => $col) {
-          if (isset($col['default']) && is_string($col['default'])) {
-            $schema[$tblname]['cols'][$colname]['default'] = (
-              '\''.$schema[$tblname]['cols'][$colname]['default'].'\'');
-          }
-        }
-      }
-
-        
       $generate[$module] = $schema;
       foreach ($generate[$module] as $name => $table) {
         if (substr($name, 0, 1) == '#') {
