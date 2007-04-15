@@ -1,4 +1,5 @@
 <?php
+// $Id$
 
 function content_schema() {
   $schema = array();

@@ -196,7 +196,7 @@ function schema_compare_table($ref, $inspect = NULL, &$reasons = array()) {
   foreach ($ref['cols'] as $colname => $col) {
     $col = array_intersect_key($col, $col_keys);
     if (! isset($inspect['cols'][$colname])) {
-      $reasons[] = "$colname: missing";
+      $reasons[] = "$colname: not in database";
       continue;
     }
     $colcmp1 = array_diff_assoc($col, $inspect['cols'][$colname]);
@@ -242,16 +242,14 @@ function schema_compare_table($ref, $inspect = NULL, &$reasons = array()) {
   }
   if (is_array($inspect['keys'])) {
     foreach ($inspect['keys'] as $keyname => $col) {
-      // XXX this is not an error, the dba might have added it on purpose
-      $reasons[] = "index $keyname: unexpected index";
+      // this is not an error, the dba might have added it on purpose
+      $notes[] = "index $keyname: unexpected index";
     }
   }
 
-  if (count($reasons)) {
-    return array('status' => 'different', 'reasons' => $reasons);
-  }
-
-  return array('status' => 'same');
+  $status = (count($reasons) ? 'different' : 'same');
+  return array('status' => $status, 'reasons' => $reasons,
+      'notes' => $notes);
 }
 
 // Collect the results of all modules that implement hook_schema.  The
