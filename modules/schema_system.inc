@@ -132,25 +132,6 @@ function system_schema()
       'lid' => array('nid'),
       'PRIMARY' => array('cid')),
     );
-  $schema['devel_queries'] = array(
-    'cols' => array(
-      'qid' => array('type' => 'int', 'not null' => 1, 'disp_width' => '10'),
-      'function' => array('type' => 'varchar', 'not null' => 1, 'default' => '', 'length' => '255'),
-      'query' => array('type' => 'text', 'not null' => 1),
-      'hash' => array('type' => 'varchar', 'not null' => 1, 'default' => '', 'length' => '255')),
-    'keys' => array(
-      'PRIMARY' => array('hash'),
-      'qid' => array('qid')),
-    );
-  $schema['devel_times'] = array(
-    'cols' => array(
-      'tid' => array('type' => 'int', 'not null' => 1, 'disp_width' => '10'),
-      'qid' => array('type' => 'int', 'not null' => 1, 'default' => 0, 'disp_width' => '10'),
-      'time' => array('type' => 'float', 'not null' => 0)),
-    'keys' => array(
-      'PRIMARY' => array('tid'),
-      'qid' => array('qid')),
-    );
   $schema['files'] = array(
     'cols' => array(
       'fid' => array('type' => 'int', 'not null' => 1, 'default' => 0, 'disp_width' => '10', 'unsigned' => 1),
