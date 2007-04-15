@@ -253,36 +253,64 @@ function schema_compare_table($ref, $inspect = NULL, &$reasons = array()) {
 }
 
 // Collect the results of all modules that implement hook_schema.  The
-// data structures doe not quite lend themselves to way
+// data structures do not quite lend themselves to the way
 // module_invoke_all() treats them.
 function schema_invoke_all() {
-  $generate = array();
+
+  // XXX This should be cached when generated but the cache will need
+  // to be cleared every time a schema changes (when modules are
+  // enabled or disabled, when updates occur, or when a CCK type
+  // structure changes).  Until schema_clear_cache() calls are put
+  // into the right places, just generate the schema from scratch
+  // every time.
+
+  $schema = array();
   foreach (module_implements('schema') as $module) {
     $function = $module.'_schema';
-    $schema = $function();
-    if (is_array($schema)) {
-      $generate[$module] = $schema;
-      foreach ($generate[$module] as $name => $table) {
+    $mod_schema = $function();
+    if (is_array($mod_schema)) {
+      $schema[$module] = $mod_schema;
+      foreach ($schema[$module] as $name => $table) {
         if (substr($name, 0, 1) == '#') {
           continue;
         }
-        $generate[$module][$name]['name'] = $name;
+        $schema[$module][$name]['name'] = $name;
       }
     }
   }
 
-  return $generate;
+  // Compute and store inverted join information so each table knows
+  // which other tables join to it.
+  foreach ($schema as $module => $tables) {
+    foreach ($tables as $t_name => $table) {
+      if (substr($t_name, 0, 1) == '#') {
+        continue;
+      }
+      foreach ($table['cols'] as $c_name => $col) {
+        if (isset($col['join'])) {
+          list($to_mod, $to_tab, $to_col) = $col['join'];
+          $schema[$to_mod][$to_tab]['join-from'][] = array(
+            $to_col, $module, $t_name, $c_name, $col['join-type']);
+        }
+      }
+    }
+  }
+
+  return $schema;
 }
 
 //////////////////////////////////////////////////////////////////////
 // Schema administration and UI
 //////////////////////////////////////////////////////////////////////
 
-function schema_perm() {
-  return array('administer schema');
+function schema_init() {
+  schema_require();
 }
 
 function schema_require() {
+  static $done = 0;
+  if ($done++) { return; }
+
   // Load all our module 'on behalfs' so they will be available for
   // any module (including this one) that needs them.
   $path = drupal_get_path('module', 'schema') . '/modules';
@@ -307,6 +335,10 @@ function schema_require() {
       ' database type ('.$engine.').  Your system will work '.
       'but the Schema module will not to operate.', 'error');
   }
+}
+
+function schema_perm() {
+  return array('administer schema');
 }
 
 function schema_menu($may_cache) {
@@ -342,8 +374,6 @@ function schema_menu($may_cache) {
       'type' => MENU_LOCAL_TASK,
       'callback' => 'schema_sql',
       );
-  } else {
-    schema_require();
   }
 
   return $items;
@@ -471,6 +501,110 @@ generates for each table defined by a module.</p>
 EOT;
 
   return $output;
+}
+
+//////////////////////////////////////////////////////////////////////
+// Schema node stuff
+//////////////////////////////////////////////////////////////////////
+
+function schema_nodeapi(&$node, $op, $a3, $a4) {
+  switch ($op) {
+    case 'load':
+
+      // We're loading a node.  Assemble a LEFT JOIN for every table
+      // that joins to node.nid.  This information is available in
+      // node's join-from property, assembled by schema_invoke_all().
+      $schema = schema_invoke_all();
+
+      $joins = array();
+      if (is_array($schema['system']['node']['join-from'])) {
+        $join_many = 0;
+        foreach ($schema['system']['node']['join-from'] as $join) {
+          list($my_col, $to_mod, $to_tab, $to_col, $join_type) = $join;
+
+          // SELECT each column individually from the joined table so
+          // we cn access them by name  below.
+          foreach ($schema[$to_mod][$to_tab]['cols'] as $c_name => $col) {
+            $sel_as = "${to_tab}_${c_name}";
+            $selcols[$to_tab][] = $sel_as;
+            $sels[] = "$to_tab.$c_name as $sel_as";
+          }
+
+          // LEFT JOIN to each table.  We need to use LEFT JOIN
+          // because only a subset of the tables will have any data
+          // for this node.
+          $joins[] ="LEFT JOIN {$to_tab} $to_tab ON n.$my_col=$to_tab.$to_col";
+          $jointypes[$to_tab] = $join_type;
+          if ($join_type == 'many') {
+            $join_many++;
+          }
+        }
+      }
+
+      // If no one wants this, go home.
+      if (count($joins) == 0) {
+        break;
+      }
+
+      // XXX Implement a multi-column rollup handler.
+      if ($join_many > 1) {
+        drupal_set_message('Schema: Only one 1-to-many node join is '.
+          'currently supported.', 'error');
+        break;
+      }
+
+      // Execute our rather large assembled query.  Not just for Views anymore!
+      $sql = ('SELECT '.implode(",\n\t", $sels)."\nFROM {node} n\n".
+        implode("\n\t", $joins)."\nWHERE n.nid=%d");
+      //dpm($sql);
+      $q = db_query($sql, $node->nid);
+
+      // Each row of the results will have values from one or more
+      // tables.  We saved the list of columns selected from each
+      // table above.  For each row, if any of the columns from a
+      // particular table have are non-NULL, save all of that table's
+      // columns for this row.  If all of the columns are NULL, we are
+      // seeing LEFT JOIN artifact.
+      //
+      // Some tables are 1-to-1 joins and some are 1-to-many.  We will
+      // get a separate row for each 1-to-many join and the 1-to-1
+      // join data will be duplicated each time.  After the first time
+      // we get non-NULL data for a 1-to-1 join, stop looking for data
+      // from those columns so we do not store duplicate values.
+      //
+      // Save all the data in $node->schema_data, an array mapping
+      // table names to an array of result rows.
+      while ($r = db_fetch_array($q)) {
+        foreach ($selcols as $table => $cols) {
+          $vals = array();
+          $got_val = FALSE;
+          foreach ($cols as $sel_as) {
+            $vals[$sel_as] = $r[$sel_as];
+            $got_val = $got_val || !is_null($r[$sel_as]);
+          }
+          if ($got_val) {
+            $schema_data[$table][] = $vals;
+            
+            if ($jointypes[$table] == 'one') {
+              // ignore any repeated data from this table
+              unset($selcols[$table]);
+            }
+          }
+        }
+      }
+
+      return array('schema_data' => $schema_data);
+
+    case 'view':
+      // For easy debugging and demonstration, display the data we
+      // loaded in the node body.  This is temporary, of course.
+      $node->content['schema_data'] = array(
+        '#title' => 'schema_data',
+        '#value' => '<p><b>data loaded by schema in one query</b></p><textarea style="width:100%" rows="30">'.print_r($node->schema_data,1).'</textarea>',
+        '#weight' => 99);
+      
+      break;
+  }
 }
 
   

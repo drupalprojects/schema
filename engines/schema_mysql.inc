@@ -1,4 +1,5 @@
 <?php
+// $Id$
 
 function schema_mysql_create_table_sql($table) {
   $sql_cols = array();

@@ -2,6 +2,8 @@
 // $Id$
 
 function content_schema() {
+  $info = _content_type_info();
+
   $schema = array();
   $fields = array();
 
@@ -9,45 +11,37 @@ function content_schema() {
   $base = array(
     'cols' => array(
       'vid' => array('type' => 'int', 'unsigned' => 1, 'not null' => 1,
-        'default' => '0'),
+        'default' => '0',
+        'join' => array('system', 'node', 'vid'),
+        'join-type' => 'one'),
       'nid' => array('type' => 'int', 'unsigned' => 1, 'not null' => 1,
         'default' => '0')),
     'keys' => array(
       'PRIMARY' => array('vid'))
     );
-  
-  $r = db_query('SELECT * FROM {node_field}');
-  while ($f = db_fetch_array($r)) { 
-    $fields[$f['field_name']] = $f;
-    if ($f['db_storage'] != CONTENT_DB_STORAGE_PER_FIELD) {
-      continue;
-    }
 
-    // Initialize content_field tables.
-    $name = 'content_'.$f['field_name'];
-    $schema[$name] = $base;
-    if ($f['multiple']) {
-      $schema[$name]['cols']['delta'] = array(
-        'type' => 'int', 'unsigned' => 1, 'not null' => 1, 'default' => '0');
-      $schema[$name]['keys']['PRIMARY'][0] .= ', delta';
+  foreach ($info['fields'] as $f) {
+    if ($f['db_storage'] == CONTENT_DB_STORAGE_PER_FIELD) {
+      $name = 'content_'.$f['field_name'];
+      $schema[$name] = $base;
+      if ($f['multiple']) {
+        $schema[$name]['cols']['delta'] = array(
+          'type' => 'int', 'unsigned' => 1, 'not null' => 1, 'default' => '0');
+        $schema[$name]['keys']['PRIMARY'][0] .= ', delta';
+        $schema[$name]['cols']['vid']['join-type'] = 'many';
+      }
+      
+      _content_schema_add_field($schema, $name, $f);
     }
-    
-    _content_schema_add_field($schema, $name, $f);
   }
 
-  // Initialize content_type table entries.
-  $r = db_query('SELECT * FROM {node_type}');
-  while ($t = db_fetch_array($r)) {
-    $schema['content_type_'.$t['type']] = $base;
-  }
-
-  // Add field columns to content_type table entries.
-  $r = db_query('SELECT * FROM {node_field_instance}');
-  while ($fi = db_fetch_array($r)) { 
-    $field = $fields[$fi['field_name']];
-    if ($field['db_storage'] == CONTENT_DB_STORAGE_PER_CONTENT_TYPE) {
-      _content_schema_add_field($schema, 'content_type_'.$fi['type_name'],
-        $field);
+  foreach ($info['content types'] as $t_name => $type) {
+    $schema['content_type_'.$t_name] = $base;
+    foreach ($type['fields'] as $f_name => $field) {
+      if ($field['db_storage'] == CONTENT_DB_STORAGE_PER_CONTENT_TYPE) {
+        _content_schema_add_field($schema, 'content_type_'.$t_name,
+          $field);
+      }
     }
   }
 
@@ -69,8 +63,16 @@ function _content_schema_add_field(&$schema, $tblname, $f) {
     // by mismatches which aren't my fault!  So, for now, I make the
     // column specifications match what CCK actually does instead of
     // what it is supposed to do.
-    $sc_col['not null'] = 0;
-    unset($sc_col['default']);
+    if ($f_colname != 'format') {
+      $sc_col['not null'] = 0;
+      unset($sc_col['default']);
+    }
+
+    // Convert CCK field 'length' for int fields into 'disp_width'
+    if (substr($sc_col['type'], 'int') !== FALSE && isset($sc_col['length'])){
+      $sc_col['disp_width'] = $sc_col['length'];
+      unset($sc_col['length']);
+    }
 
     $schema[$tblname]['cols'][$sc_colname] = $sc_col;
   }

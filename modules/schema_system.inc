@@ -1,6 +1,32 @@
 <?php
 // $Id$
 
+// Until Drupal core uses Schema directly and maintains its own
+// system_schema() function, I want it to be easy to generate new
+// system schemas directly from the database via inspection every time
+// there is an update and drop them into this copy of
+// system_schema().  I also want to maintain relationship information
+// for core tables but I do not want to have to re-enter every time I
+// paste in a new schema array.  Therefore, I maintain the
+// relationship information (which changes very infrequently) in a
+// separate array and merge them into the return value of
+// system_schema().  It's a hack, but it achieves the goal.
+function _system_schema_merge($schema) {
+  
+  // I haven't defined many relationships yet...
+  $merge['node_comment_statistics']['cols']['nid'] = array(
+    'join' => array('system', 'node', 'nid'),
+    'join-type' => 'one');
+
+  foreach (array_keys($merge) as $t_name) {
+    foreach ($merge[$t_name]['cols'] as $c_name => $attrs) {
+      $schema[$t_name]['cols'][$c_name] = array_merge(
+        $schema[$t_name]['cols'][$c_name], $attrs);
+    }
+  }
+  return $schema;
+}
+
 function system_schema()
 {
   $schema['#version'] = '1022';
@@ -522,7 +548,7 @@ function system_schema()
       'PRIMARY' => array('wid'),
       'type' => array('type')),
     );
-  return $schema;
+  return _system_schema_merge($schema);
 }
 
 ?>
