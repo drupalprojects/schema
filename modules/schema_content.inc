@@ -37,10 +37,15 @@ function content_schema() {
 
   foreach ($info['content types'] as $t_name => $type) {
     $schema['content_type_'.$t_name] = $base;
+    $schema['content_type_'.$t_name]['cols']['vid']['node-types'][]=$t_name;
     foreach ($type['fields'] as $f_name => $field) {
       if ($field['db_storage'] == CONTENT_DB_STORAGE_PER_CONTENT_TYPE) {
         _content_schema_add_field($schema, 'content_type_'.$t_name,
           $field);
+      } else {
+        // The field does not add columns to this type's table but
+        // does join to nodes of this type.
+        $schema['content_'.$f_name]['cols']['vid']['node-types'][]=$t_name;
       }
     }
   }

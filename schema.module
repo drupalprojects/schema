@@ -521,6 +521,15 @@ function schema_nodeapi(&$node, $op, $a3, $a4) {
         $join_many = 0;
         foreach ($schema['system']['node']['join-from'] as $join) {
           list($my_col, $to_mod, $to_tab, $to_col, $join_type) = $join;
+          
+          // Optimization: do not join to tables that declare the node
+          // types they relate to and do not list this node type.
+          // This saves a join that will produce no results.
+          if (isset($schema[$to_mod][$to_tab]['cols'][$to_col]['node-types'])&&
+            array_search($node->type, $schema[$to_mod][$to_tab]['cols']
+              [$to_col]['node-types']) === FALSE) {
+            continue;
+          }
 
           // SELECT each column individually from the joined table so
           // we cn access them by name  below.
