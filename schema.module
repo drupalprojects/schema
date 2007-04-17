@@ -521,22 +521,37 @@ function schema_nodeapi(&$node, $op, $a3, $a4) {
         $join_many = 0;
         foreach ($schema['system']['node']['join-from'] as $join) {
           list($my_col, $to_mod, $to_tab, $to_col, $join_type) = $join;
+          $table = $schema[$to_mod][$to_tab];
           
           // Optimization: do not join to tables that declare the node
           // types they relate to and do not list this node type.
           // This saves a join that will produce no results.
-          if (isset($schema[$to_mod][$to_tab]['cols'][$to_col]['node-types'])&&
-            array_search($node->type, $schema[$to_mod][$to_tab]['cols']
-              [$to_col]['node-types']) === FALSE) {
+          if (isset($table['cols'][$to_col]['node-types'])&&
+            array_search($node->type, $table['cols'][$to_col]['node-types'])
+            === FALSE) {
             continue;
           }
 
           // SELECT each column individually from the joined table so
           // we cn access them by name  below.
-          foreach ($schema[$to_mod][$to_tab]['cols'] as $c_name => $col) {
+          foreach ($table['cols'] as $c_name => $col) {
             $sel_as = "${to_tab}_${c_name}";
             $selcols[$to_tab][] = $sel_as;
             $sels[] = "$to_tab.$c_name as $sel_as";
+          }
+
+          if ($join_type == 'many') {
+            if (isset($table['keys']['PRIMARY'])) {
+              // XXX my data structure for primary keys is not good
+              $pcols = explode(', ', $table['keys']['PRIMARY'][0]);
+              foreach ($pcols as $pcol) {
+                $primarys[$to_tab][] = "${to_tab}_${pcol}";
+              }
+            } else {
+              drupal_set_message('Schema node-load: multi joins require '.
+                'a primary key', 'error');
+              break;
+            }
           }
 
           // LEFT JOIN to each table.  We need to use LEFT JOIN
@@ -555,13 +570,6 @@ function schema_nodeapi(&$node, $op, $a3, $a4) {
         break;
       }
 
-      // XXX Implement a multi-column rollup handler.
-      if ($join_many > 1) {
-        drupal_set_message('Schema: Only one 1-to-many node join is '.
-          'currently supported.', 'error');
-        break;
-      }
-
       // Execute our rather large assembled query.  Not just for Views anymore!
       $sql = ('SELECT '.implode(",\n\t", $sels)."\nFROM {node} n\n".
         implode("\n\t", $joins)."\nWHERE n.nid=%d");
@@ -571,15 +579,17 @@ function schema_nodeapi(&$node, $op, $a3, $a4) {
       // Each row of the results will have values from one or more
       // tables.  We saved the list of columns selected from each
       // table above.  For each row, if any of the columns from a
-      // particular table have are non-NULL, save all of that table's
+      // particular table are non-NULL, save all of that table's
       // columns for this row.  If all of the columns are NULL, we are
-      // seeing LEFT JOIN artifact.
+      // seeing LEFT JOIN artifact, so we skip it.
       //
-      // Some tables are 1-to-1 joins and some are 1-to-many.  We will
-      // get a separate row for each 1-to-many join and the 1-to-1
-      // join data will be duplicated each time.  After the first time
-      // we get non-NULL data for a 1-to-1 join, stop looking for data
-      // from those columns so we do not store duplicate values.
+      // The nature of this query is that we get a lot of duplicated
+      // data and we have to be sure to ignore all but one copy of
+      // each unique result.  For one-joins, it is easy: after we get
+      // results for that table we just stop looking for them.  For
+      // many-joins, we keep track of the primary keys we've seen from
+      // that table and only save a row's data if we haven't seen that
+      // primary key yet (by definition, primary keys are unique).
       //
       // Save all the data in $node->schema_data, an array mapping
       // table names to an array of result rows.
@@ -592,6 +602,16 @@ function schema_nodeapi(&$node, $op, $a3, $a4) {
             $got_val = $got_val || !is_null($r[$sel_as]);
           }
           if ($got_val) {
+            if ($jointypes[$table] == 'many') {
+              $keys = $primarys[$table];
+              $keyvals = array_intersect_key($vals, array_flip($primarys[$table]));
+              $serial = serialize($keyvals);
+              if (is_array($seenkeys[$table]) &&
+                array_search($serial, $seenkeys[$table]) !== FALSE) {
+                continue;
+              }
+              $seenkeys[$table][] = $serial;
+            }
             $schema_data[$table][] = $vals;
             
             if ($jointypes[$table] == 'one') {

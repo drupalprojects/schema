@@ -14,8 +14,25 @@
 function _system_schema_merge($schema) {
   
   // I haven't defined many relationships yet...
-  $merge['node_comment_statistics']['cols']['nid'] = array(
+  $join_node_1 = array(
     'join' => array('system', 'node', 'nid'),
+    'join-type' => 'one');
+  $join_node_n = array(
+    'join' => array('system', 'node', 'nid'),
+    'join-type' => 'many');
+  
+  $joins_node_1 = array('node_comment_statistics');
+  $joins_node_n = array('comments');
+  
+  foreach ($joins_node_1 as $t_name) {
+    $merge[$t_name]['cols']['nid'] = $join_node_1;
+  }
+  foreach ($joins_node_n as $t_name) {
+    $merge[$t_name]['cols']['nid'] = $join_node_n;
+  }
+  
+  $merge['node']['cols']['uid'] = array(
+    'join' => array('system', 'user', 'uid'),
     'join-type' => 'one');
 
   foreach (array_keys($merge) as $t_name) {
