@@ -4,53 +4,68 @@
 // Table of MySQL, PostgreSQL, and ANSI SQL data types:
 // http://en.wikibooks.org/w/index.php?title=Programming:Converting_MySQL_to_PostgreSQL#Data_Types
 
-global $m2p_map;
-$m2p_map = array(
-  'int' => 'integer', 'mediumint' => 'integer', 'bigint' => 'bigint',
-  'tinyint' => 'smallint',
-  'float' => 'float',
-  'varchar' => 'varchar',
-  'text' => 'text', 'mediumtext' => 'text', 'longtext' => 'text',
-  'longblob' => 'bytea');
+function _schema_pgsql_type_map() {
+  static $map;
+  if (!isset($map)) {
+    // put :normal last so it gets preserved by array_flip
+    $map = array(
+      'varchar:normal' => 'varchar',
+      
+      'text:small' => 'text',
+      'text:medium' => 'text',
+      'text:big' => 'text',
+      'text:normal' => 'text',
+      
+      'int:tiny' => 'smallint',
+      'int:small' => 'smallint',
+      'int:medium' => 'integer',
+      'int:big' => 'bigint',
+      'int:normal' => 'integer',
+      
+      'float:tiny' => 'real',
+      'float:small' => 'real',
+      'float:medium' => 'real',
+      'float:big' => 'double precision',
+      'float:normal' => 'real',
+      
+      'blob:big' => 'bytea',
+      'blob:normal' => 'bytea',
 
-function _schema_pgsql_m2p($type) {
-  global $m2p_map;
-  if (! isset($m2p_map[$type])) {
-    drupal_set_message(t('No PostgreSQL mapping found for %type data type.',
-                         array('%type' => $type)), 'error');
-
-  }
-  return $m2p_map[$type];
-}
-
-function _schema_pgsql_p2m($type) {
-  static $p2m_map;
-  if (!isset($p2m_map)) {
-    $p2m_map = array(
-      'integer' => 'int',
-      'smallint' => 'tinyint',
-      'bigint' => 'bigint',
-      'float' => 'float',
-      'varchar' => 'varchar',
-      'character varying' => 'varchar',
-      // XXX map to MySQL types based on max length
-      'text' => 'text',
-      'bytea' => 'longblob',
+      'datetime:normal' => 'timestamp',
       );
   }
+  return $map;
+}
 
-  if (! isset($p2m_map[$type])) {
-    drupal_set_message(t('No MySQL mapping found for %type data type.',
+function _schema_type_to_pg($col) {
+  $map = _schema_pgsql_type_map();
+  $size = (isset($col['size']) ? $col['size'] : 'normal');
+  $type = $col['type'].':'.$size;
+  if (isset($map[$type])) {
+    return $map[$type];
+  } else {
+    drupal_set_message(t('No PostgreSQL type for Schema type %type.',
                          array('%type' => $type)), 'error');
-
+    return $col['type'];
   }
-  return $p2m_map[$type];
+}
+
+function _schema_pg_to_type($type) {
+  $map = array_flip(_schema_pgsql_type_map()); // inefficient
+  $map['character varying'] = 'varchar:normal'; // XXX
+  if (isset($map[$type])) {
+    return explode(':', $map[$type]);
+  } else {
+    drupal_set_message(t('No Schema type for PostgreSQL type %type.',
+                         array('%type' => $type)), 'error');
+    return array($type, 'normal');
+  }
 }
 
 function schema_pgsql_create_table_sql($table) {
   $sql_cols = array();
   foreach ($table['cols'] as $colname => $col) {
-    $sql = $colname.' '._schema_pgsql_m2p($col['type']);
+    $sql = $colname.' '._schema_type_to_pg($col);
     unset($col['type']);
     if ($col['length']) {
       $sql .= '('.$col['length'].')';
@@ -126,7 +141,7 @@ function schema_pgsql_inspect($name = NULL) {
 
     $numeric = !is_null($r['numeric_scale']);
     $col = array();
-    $col['type'] = _schema_pgsql_p2m($r['data_type']);
+    list($col['type'], $col['size']) = _schema_pg_to_type($r['data_type']);
     if (! $numeric) {
       $col['length'] = $r['character_maximum_length'];
     }

@@ -48,7 +48,10 @@ function schema_phpprint($schema) {
     $cols = array();
     foreach ($table['cols'] as $colname => $col) {
       $attrs = array();
-      foreach (array('type', 'not null', 'default', 'length') as $attr) {
+      if ($col['type'] == 'varchar') {
+        unset($col['size']);
+      }
+      foreach (array('type', 'size', 'length', 'not null', 'default') as $attr) {
         if (isset($col[$attr])) {
           if (is_string($col[$attr])) {
             $attrs[] = "'$attr' => '$col[$attr]'";
