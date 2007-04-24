@@ -30,9 +30,12 @@ function _system_schema_merge($schema) {
   foreach ($joins_node_n as $t_name) {
     $merge[$t_name]['cols']['nid'] = $join_node_n;
   }
-  
+
   $merge['node']['cols']['uid'] = array(
-    'join' => array('system', 'user', 'uid'),
+    'join' => array('system', 'users', 'uid'),
+    'join-type' => 'one');
+  $merge['node_revisions']['cols']['vid'] = array(
+    'join' => array('system', 'node', 'vid'),
     'join-type' => 'one');
 
   foreach (array_keys($merge) as $t_name) {
