@@ -134,28 +134,25 @@ function schema_pgsql_inspect($name = NULL) {
   
   $res = db_query($sql, $database, $name);
   while ($r = db_fetch_array($res)) {
-    if (!$once && $r['data_type'] == 'character varying') {
-      //dpm($r);
+    if (FALSE && !$once && $r['data_type'] == 'character varying') {
+      dpm($r);
       $once++;
     }
 
     $numeric = !is_null($r['numeric_scale']);
     $col = array();
     list($col['type'], $col['size']) = _schema_pg_to_type($r['data_type']);
-    if (! $numeric) {
+    if (! $numeric && $r['character_maximum_length']) {
       $col['length'] = $r['character_maximum_length'];
     }
     $col['not null'] = ($r['is_nullable'] == 'YES' ? 0 : 1);
     if (! is_null($r['column_default'])) {
+      list($col['default'], $def_type) = explode('::', $r['column_default']);
       if ($numeric) {
         // XXX floats!
-        $col['default'] = intval($r['column_default']);
+        $col['default'] = intval($col['default']);
       } else {
-        $col['default'] = $r['column_default'];
-        // XXX I don't really know what ::character varying, ::text,
-        // etc. is for.
-        $col['default'] = preg_replace('@::.*@', '', 
-          $col['default']);
+        $col['default'] = substr($col['default'], 1, -1);
       }
     }
     $tables[$r['table_name']]['cols'][$r['column_name']] = $col;
@@ -171,20 +168,13 @@ function schema_pgsql_inspect($name = NULL) {
   while ($r = db_fetch_array($res)) {
     $name = $r['constraint_name'];
     if ($r['constraint_type'] == 'PRIMARY KEY') {
-      $name = 'PRIMARY';
-    }
-    if (isset($tables[$r['table_name']]['keys'][$name][0])) {
-      $tables[$r['table_name']]['keys'][$name][0] .= ', ';
-    }
-    $tables[$r['table_name']]['keys'][$name][0] .=$r['column_name'];
-    // primary key is always unique
-    if ($name != 'PRIMARY') {
-      // in fact, all pgsql constraints are unique
-      $tables[$r['table_name']]['keys'][$name][1] = 'unique';
+      $tables[$r['table_name']]['primary'][] = $r['column_name'];
+    } else {
+      $tables[$r['table_name']]['unique'][$name][] = $r['column_name'];
     }
   }
 
-  // I truly wish I was kidding here, but I'm not.
+  // I truly wish I was kidding with this query, but I'm not.
   // 
   // RoR (unsurprisingly) needs similar code, and I found this
   // monstrous query at http://dev.rubyonrails.org/ticket/6253.  Mine
@@ -224,8 +214,7 @@ function schema_pgsql_inspect($name = NULL) {
     '        WHEN i.indkey[9]=a.attnum THEN 9 END ');
   while ($r = db_fetch_array($res)) {
     //dpm($r);
-    $tables[$r['tblname']]['keys'][$r['idxname']][0] .= $r['attname'].', ';
-    $tables[$r['tblname']]['keys'][$r['idxname']][1] .= 'multi';
+    $tables[$r['tblname']]['index'][$r['idxname']][] = $r['attname'];
   }
 
   return $tables;
