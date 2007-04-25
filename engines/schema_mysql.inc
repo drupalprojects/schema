@@ -65,6 +65,10 @@ function schema_mysql_create_table_sql($table) {
   $sql_cols = array();
   foreach ($table['cols'] as $colname => $col) {
     $sql = $colname.' '._schema_type_to_mysql($col);
+    if ($col['unsigned']) {
+      $sql .= ' UNSIGNED';
+    }
+    unset($col['unsigned']);
     if ($col['length']) {
       $sql .= '('.$col['length'].')';
     }

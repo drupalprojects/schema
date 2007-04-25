@@ -42,7 +42,7 @@ function _schema_type_to_pg($col) {
   $size = (isset($col['size']) ? $col['size'] : 'normal');
   $type = $col['type'].':'.$size;
   if (isset($map[$type])) {
-    return $map[$type];
+    return $map[$type].($col['unsigned'] ? '_unsigned' : '');
   } else {
     drupal_set_message(t('No PostgreSQL type for Schema type %type.',
                          array('%type' => $type)), 'error');
@@ -163,6 +163,16 @@ function schema_pgsql_inspect($name = NULL) {
         }
       } else {
         $col['default'] = substr($col['default'], 1, -1);
+      }
+
+      // XXX These domains are currently defined in system.install.
+      // This engine should probably create and own them, however.
+      switch ($r['domain_name']) {
+        case 'int_unsigned':
+        case 'smallint_unsigned':
+        case 'bigint_unsigned':
+          $col['unsigned'] = 1;
+          break;
       }
     }
 

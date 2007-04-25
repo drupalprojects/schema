@@ -52,7 +52,7 @@ function schema_phpprint($schema) {
       if ($col['type'] == 'varchar' || $col['size'] == 'normal') {
         unset($col['size']);
       }
-      foreach (array('type', 'size', 'length', 'not null', 'default') as $attr) {
+      foreach (array('type', 'unsigned', 'size', 'length', 'not null', 'default') as $attr) {
         if (isset($col[$attr])) {
           if (is_string($col[$attr])) {
             $attrs[] = "'$attr' => '$col[$attr]'";
@@ -459,6 +459,11 @@ function schema_require() {
   }
 
   global $db_type, $schema_engines;
+
+  if (!isset($db_type)) {
+    return;
+  }
+
   $schema_engines = array();
   if (0) {
     // Load the schema database engine for the currently active database.
@@ -478,8 +483,8 @@ function schema_require() {
   }
       
   if (array_search($db_type, $schema_engines) === FALSE) {
-    drupal_set_message('The Schema module does not support the '.$db_type.
-      ' database type.', 'error');
+    drupal_set_message('The Schema module does not support the "'.$db_type.
+      '" database type.', 'error');
   }
 }
 
