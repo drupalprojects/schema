@@ -52,7 +52,7 @@ function system_schema()
   $schema['#version'] = '1022';
   $schema['access'] = array(
     'cols' => array(
-      'aid' => array('type' => 'int', 'not null' => 1, 'default' => 0),
+      'aid' => array('type' => 'serial', 'not null' => 1),
       'mask' => array('type' => 'varchar', 'length' => '255', 'not null' => 1, 'default' => ''),
       'type' => array('type' => 'varchar', 'length' => '255', 'not null' => 1, 'default' => ''),
       'status' => array('type' => 'int', 'size' => 'small', 'not null' => 1, 'default' => 0)),
@@ -60,7 +60,7 @@ function system_schema()
     );
   $schema['authmap'] = array(
     'cols' => array(
-      'aid' => array('type' => 'int', 'not null' => 1, 'default' => 0),
+      'aid' => array('type' => 'serial', 'not null' => 1),
       'uid' => array('type' => 'int', 'not null' => 1, 'default' => 0),
       'authname' => array('type' => 'varchar', 'length' => '128', 'not null' => 1, 'default' => ''),
       'module' => array('type' => 'varchar', 'length' => '128', 'not null' => 1, 'default' => '')),
@@ -91,7 +91,7 @@ function system_schema()
     );
   $schema['boxes'] = array(
     'cols' => array(
-      'bid' => array('type' => 'int', 'not null' => 1, 'default' => 0),
+      'bid' => array('type' => 'serial', 'not null' => 1),
       'body' => array('type' => 'text', 'not null' => 0),
       'info' => array('type' => 'varchar', 'length' => '128', 'not null' => 1, 'default' => ''),
       'format' => array('type' => 'int', 'size' => 'small', 'not null' => 1, 'default' => 0)),
@@ -145,7 +145,7 @@ function system_schema()
     );
   $schema['comments'] = array(
     'cols' => array(
-      'cid' => array('type' => 'int', 'not null' => 1, 'default' => 0),
+      'cid' => array('type' => 'serial', 'not null' => 1),
       'pid' => array('type' => 'int', 'not null' => 1, 'default' => 0),
       'nid' => array('type' => 'int', 'not null' => 1, 'default' => 0),
       'uid' => array('type' => 'int', 'not null' => 1, 'default' => 0),
@@ -177,7 +177,7 @@ function system_schema()
     );
   $schema['files'] = array(
     'cols' => array(
-      'fid' => array('type' => 'int', 'not null' => 1, 'default' => 0),
+      'fid' => array('type' => 'serial', 'not null' => 1),
       'nid' => array('type' => 'int', 'not null' => 1, 'default' => 0),
       'filename' => array('type' => 'varchar', 'length' => '255', 'not null' => 1, 'default' => ''),
       'filepath' => array('type' => 'varchar', 'length' => '255', 'not null' => 1, 'default' => ''),
@@ -189,7 +189,7 @@ function system_schema()
     );
   $schema['filter_formats'] = array(
     'cols' => array(
-      'format' => array('type' => 'int', 'not null' => 1, 'default' => 0),
+      'format' => array('type' => 'serial', 'not null' => 1),
       'name' => array('type' => 'varchar', 'length' => '255', 'not null' => 1, 'default' => ''),
       'roles' => array('type' => 'varchar', 'length' => '255', 'not null' => 1, 'default' => ''),
       'cache' => array('type' => 'int', 'size' => 'small', 'not null' => 1, 'default' => 0)),
@@ -221,7 +221,7 @@ function system_schema()
     );
   $schema['menu'] = array(
     'cols' => array(
-      'mid' => array('type' => 'int', 'not null' => 1, 'default' => 0),
+      'mid' => array('type' => 'serial', 'not null' => 1),
       'pid' => array('type' => 'int', 'not null' => 1, 'default' => 0),
       'path' => array('type' => 'varchar', 'length' => '255', 'not null' => 1, 'default' => ''),
       'title' => array('type' => 'varchar', 'length' => '255', 'not null' => 1, 'default' => ''),
@@ -232,7 +232,7 @@ function system_schema()
     );
   $schema['node'] = array(
     'cols' => array(
-      'nid' => array('type' => 'int', 'not null' => 1, 'default' => 0),
+      'nid' => array('type' => 'serial', 'not null' => 1),
       'vid' => array('type' => 'int', 'not null' => 1, 'default' => 0),
       'type' => array('type' => 'varchar', 'length' => '32', 'not null' => 1, 'default' => ''),
       'title' => array('type' => 'varchar', 'length' => '128', 'not null' => 1, 'default' => ''),
@@ -270,7 +270,7 @@ function system_schema()
     );
   $schema['node_comment_statistics'] = array(
     'cols' => array(
-      'nid' => array('type' => 'int', 'not null' => 1, 'default' => 0),
+      'nid' => array('type' => 'serial', 'not null' => 1),
       'last_comment_timestamp' => array('type' => 'int', 'not null' => 1, 'default' => 0),
       'last_comment_name' => array('type' => 'varchar', 'length' => '60', 'not null' => 0),
       'last_comment_uid' => array('type' => 'int', 'not null' => 1, 'default' => 0),
@@ -294,7 +294,7 @@ function system_schema()
   $schema['node_revisions'] = array(
     'cols' => array(
       'nid' => array('type' => 'int', 'not null' => 1),
-      'vid' => array('type' => 'int', 'not null' => 1, 'default' => 0),
+      'vid' => array('type' => 'serial', 'not null' => 1),
       'uid' => array('type' => 'int', 'not null' => 1, 'default' => 0),
       'title' => array('type' => 'varchar', 'length' => '128', 'not null' => 1, 'default' => ''),
       'body' => array('type' => 'text', 'not null' => 1, 'default' => ''),
@@ -335,7 +335,7 @@ function system_schema()
     );
   $schema['role'] = array(
     'cols' => array(
-      'rid' => array('type' => 'int', 'not null' => 1, 'default' => 0),
+      'rid' => array('type' => 'serial', 'not null' => 1),
       'name' => array('type' => 'varchar', 'length' => '64', 'not null' => 1, 'default' => '')),
     'primary' => array('rid'),
     'unique' => array(
@@ -371,7 +371,7 @@ function system_schema()
     );
   $schema['term_data'] = array(
     'cols' => array(
-      'tid' => array('type' => 'int', 'not null' => 1, 'default' => 0),
+      'tid' => array('type' => 'serial', 'not null' => 1),
       'vid' => array('type' => 'int', 'not null' => 1, 'default' => 0),
       'name' => array('type' => 'varchar', 'length' => '255', 'not null' => 1, 'default' => ''),
       'description' => array('type' => 'text', 'not null' => 0),
@@ -415,7 +415,7 @@ function system_schema()
     );
   $schema['url_alias'] = array(
     'cols' => array(
-      'pid' => array('type' => 'int', 'not null' => 1, 'default' => 0),
+      'pid' => array('type' => 'serial', 'not null' => 1),
       'src' => array('type' => 'varchar', 'length' => '128', 'not null' => 1, 'default' => ''),
       'dst' => array('type' => 'varchar', 'length' => '128', 'not null' => 1, 'default' => '')),
     'primary' => array('pid'),
@@ -426,7 +426,7 @@ function system_schema()
     );
   $schema['users'] = array(
     'cols' => array(
-      'uid' => array('type' => 'int', 'not null' => 1, 'default' => 0),
+      'uid' => array('type' => 'serial', 'not null' => 1),
       'name' => array('type' => 'varchar', 'length' => '60', 'not null' => 1, 'default' => ''),
       'pass' => array('type' => 'varchar', 'length' => '32', 'not null' => 1, 'default' => ''),
       'mail' => array('type' => 'varchar', 'length' => '64', 'not null' => 0, 'default' => ''),
@@ -465,7 +465,7 @@ function system_schema()
     );
   $schema['vocabulary'] = array(
     'cols' => array(
-      'vid' => array('type' => 'int', 'not null' => 1, 'default' => 0),
+      'vid' => array('type' => 'serial', 'not null' => 1),
       'name' => array('type' => 'varchar', 'length' => '255', 'not null' => 1, 'default' => ''),
       'description' => array('type' => 'text', 'not null' => 0),
       'help' => array('type' => 'varchar', 'length' => '255', 'not null' => 1, 'default' => ''),
@@ -486,7 +486,7 @@ function system_schema()
     );
   $schema['watchdog'] = array(
     'cols' => array(
-      'wid' => array('type' => 'int', 'not null' => 1, 'default' => 0),
+      'wid' => array('type' => 'serial', 'not null' => 1),
       'uid' => array('type' => 'int', 'not null' => 1, 'default' => 0),
       'type' => array('type' => 'varchar', 'length' => '16', 'not null' => 1, 'default' => ''),
       'message' => array('type' => 'text', 'not null' => 1),

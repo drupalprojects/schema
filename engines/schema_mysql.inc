@@ -12,47 +12,50 @@ function _schema_mysql_type_map() {
       'text:big' =>  'LONGTEXT',
       'text:normal' => 'TEXT',
 
+      'serial:normal' => 'INT',
+      'serial:big' => 'BIGINT',
+
       'int:tiny' => 'TINYINT',
       'int:small' => 'SMALLINT',
       'int:medium' => 'MEDIUMINT',
       'int:big' => 'BIGINT',
-      'int:normal => 'INT',
+      'int:normal' => 'INT',
 
       'float:tiny' => 'FLOAT',
       'float:small' => 'FLOAT',
       'float:medium' => 'FLOAT',
       'float:big' => 'DOUBLE',
       'float:normal' => 'FLOAT',
-
+      
       'blob:big' => 'LONGBLOG',
       'blob:normal' => 'BLOB',
 
       'datetime:normal' => 'DATETIME',
+
     );
   }
   return $map;
 }
 
 function _schema_type_to_mysql($col) {
-  $map = _schema_pgsql_type_map();
+  $map = _schema_mysql_type_map();
   $size = (isset($col['size']) ? $col['size'] : 'normal');
   $type = $col['type'].':'.$size;
   if (isset($map[$type])) {
     return $map[$type];
   } else {
-    drupal_set_message(t('No PostgreSQL type for Schema type %type.',
+    drupal_set_message(t('No MySQL type for Schema type %type.',
                          array('%type' => $type)), 'error');
     return $col['type'];
   }
 }
 
 function _schema_mysql_to_type($type) {
-  $map = array_flip(_schema_pgsql_type_map()); // inefficient
-  $map['character varying'] = 'varchar:normal'; // XXX
+  $map = array_flip(_schema_mysql_type_map()); // inefficient
   if (isset($map[$type])) {
     return explode(':', $map[$type]);
   } else {
-    drupal_set_message(t('No Schema type for PostgreSQL type %type.',
+    drupal_set_message(t('No Schema type for MySQL type %type.',
                          array('%type' => $type)), 'error');
     return array($type, 'normal');
   }
@@ -61,11 +64,14 @@ function _schema_mysql_to_type($type) {
 function schema_mysql_create_table_sql($table) {
   $sql_cols = array();
   foreach ($table['cols'] as $colname => $col) {
-    $sql = $colname.' '.$col['type'];
-    unset($col['type']);
+    $sql = $colname.' '._schema_type_to_mysql($col);
     if ($col['length']) {
       $sql .= '('.$col['length'].')';
     }
+    if ($col['type'] == 'serial') {
+      $sql .= ' AUTO_INCREMENT';
+    }
+    unset($col['type']);
     unset($col['length']);
     if ($col['not null']) {
       $sql .= ' NOT NULL';
@@ -87,19 +93,20 @@ function schema_mysql_create_table_sql($table) {
   }
 
   $sql_keys = array();
-  if (is_array($table['keys'])) { // tables indexes are not required
-    foreach ($table['keys'] as $keyname => $key) {
-      $sql = '';
-      if ($keyname == 'PRIMARY') {
-        $sql = 'PRIMARY KEY ';
-      } else {
-        if ($key[1] == 'UNIQUE') {
-          $sql = 'UNIQUE ';
+  if (is_array($table['primary'])) {
+    $sql_keys[] = 'PRIMARY KEY ('.implode(', ', $table['primary']).')';
+  }
+  foreach (array('unique', 'index') as $type) {
+    if (is_array($table[$type])) {
+      foreach ($table[$type] as $keyname => $key) {
+        $sql = '';
+        if ($type == 'unique') {
+            $sql = 'UNIQUE ';
         }
         $sql .= 'KEY '.$keyname.' ';
+        $sql .= '('.implode(', ', $key).')';
+        $sql_keys[] = $sql;
       }
-      $sql .= '('.$key[0].')';
-      $sql_keys[] = $sql;
     }
   }
 
@@ -165,15 +172,14 @@ function schema_mysql_inspect($name = NULL) {
     'ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX',
     $database);
   while ($r = db_fetch_array($res)) {
-    if (isset($tables[$r['TABLE_NAME']]['keys'][$r['INDEX_NAME']][0])) {
-      $tables[$r['TABLE_NAME']]['keys'][$r['INDEX_NAME']][0] .= ', ';
+    if ($r['INDEX_NAME'] == 'PRIMARY') {
+      $type = 'primary';
+    } else if ($r['NON-UNIQUE'] == 0) {
+      $type = 'unique';
+    } else {
+      $type = 'index';
     }
-    $tables[$r['TABLE_NAME']]['keys'][$r['INDEX_NAME']][0] .=$r['COLUMN_NAME'];
-    // primary key is always unique
-    if ($r['INDEX_NAME'] != 'PRIMARY') {
-      $tables[$r['TABLE_NAME']]['keys'][$r['INDEX_NAME']][1] = 
-      ($r['NON_UNIQUE'] == 0 ? 'unique' : 'multi');
-    }
+    $tables[$r['TABLE_NAME']][$type][$r['INDEX_NAME']][] = $r['COLUMN_NAME'];
   }
 
   return $tables;

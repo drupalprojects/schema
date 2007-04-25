@@ -1,6 +1,8 @@
 <?
 // $Id$
 
+global $schema_engines;
+
 // schema_schema: The database schema for schema.module.  Used
 // (eventually) to store information about which modules own which
 // tables, each module's schema version, etc.  Currently it is really
@@ -325,9 +327,11 @@ function schema_drop_table($spec) {
     }
   }
 
-  $node_types = node_get_types();
-  foreach ($node_types as $type) {
-    _schema_generate_table($schema, 'system', 'node', $type->type);
+  if (module_exists('node')) {
+    $node_types = node_get_types();
+    foreach ($node_types as $type) {
+      _schema_generate_table($schema, 'system', 'node', $type->type);
+    }
   }
 
   return $schema;
@@ -446,27 +450,36 @@ function schema_require() {
 
   // Load all our module 'on behalfs' so they will be available for
   // any module (including this one) that needs them.
-  $path = drupal_get_path('module', 'schema') . '/modules';
-  $files = drupal_system_listing('schema_.*\.inc$', $path, 'name', 0);
+  $path = drupal_get_path('module', 'schema');
+  $files = drupal_system_listing('schema_.*\.inc$', $path.'/modules','name',0);
   foreach($files as $file) {
     // The filename format is very specific. It must be schema_MODULENAME.inc
     $module = substr_replace($file->name, '', 0, 7);
-    if (module_exists($module)) {
-      require_once("./$file->filename");
-    }
+    require_once("./$file->filename");
   }
 
-  // Load the schema database engine for the currently active database.
-  global $db_type;
-  $engine = (drupal_get_path('module', 'schema').
-    '/engines/schema_'.$db_type.'.inc');
-  if (is_file($engine)) {
-    require_once($engine);
+  global $db_type, $schema_engines;
+  $schema_engines = array();
+  if (0) {
+    // Load the schema database engine for the currently active database.
+    $engine = (drupal_get_path('module', 'schema').
+      '/engines/schema_'.$db_type.'.inc');
+    if (is_file($engine)) {
+      require_once($engine);
+      $schema_engines[] = $db_type;
+    }
+  } else {
+    // Load all Schema database engines.
+    $files =drupal_system_listing('schema_.*\.inc$',$path.'/engines','name',0);
+    foreach($files as $file) {
+      require_once("./$file->filename");
+      $schema_engines[] = substr($file->filename, strlen($path)+16, -4);
+    }
   }
-  else {
+      
+  if (array_search($db_type, $schema_engines) === FALSE) {
     drupal_set_message('The Schema module does not support the '.$db_type.
-      ' database type ('.$engine.').  Your system will work '.
-      'but the Schema module will not to operate.', 'error');
+      ' database type.', 'error');
   }
 }
 
@@ -507,6 +520,18 @@ function schema_menu($may_cache) {
       'type' => MENU_LOCAL_TASK,
       'callback' => 'schema_sql',
       );
+
+    global $db_type, $schema_engines;
+    foreach ($schema_engines as $engine) {
+      $items[] = array(
+        'path' => 'admin/build/schema/sql/'.$engine,
+        'title' => t($engine),
+        'type' => ($engine == $db_type ? MENU_DEFAULT_LOCAL_TASK : 
+          MENU_LOCAL_TASK),
+        'callback' => 'schema_sql',
+        'callback arguments' => $engine,
+        );
+    }
 
     $items[] = array(
       'path' => 'admin/build/schema/show',
@@ -623,20 +648,25 @@ EOT;
   return $output;
 }
 
-function schema_sql() {
+function schema_sql($engine = NULL) {
   $schema = schema_invoke_all();
   foreach ($schema as $module => $tables) {
     foreach ($tables as $name => $table) {
       if (substr($name, 0, 1) == '#') {
         continue;
       }
-      $sql .= schema_create_table_sql($table);
+      if ($engine) {
+        $sql .= call_user_func('schema_'.$engine.'_create_table_sql', $table);
+      } else {
+        $sql .= schema_create_table_sql($table);
+      }
     }
   }
     
   $output = <<<EOT
 <p>This page shows the CREATE TABLE statements that the Schema module 
-generates for each table defined by a module.</p>
+generates for the selected database engine for each table defined by a
+module.  It is for debugging purposes.</p>
 <textarea style="width:100%" rows="30">$sql</textarea>
 EOT;
 

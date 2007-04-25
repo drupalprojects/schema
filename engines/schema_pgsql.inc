@@ -1,9 +1,6 @@
 <?php
 // $Id$
 
-// Table of MySQL, PostgreSQL, and ANSI SQL data types:
-// http://en.wikibooks.org/w/index.php?title=Programming:Converting_MySQL_to_PostgreSQL#Data_Types
-
 function _schema_pgsql_type_map() {
   static $map;
   if (!isset($map)) {
@@ -32,6 +29,9 @@ function _schema_pgsql_type_map() {
       'blob:normal' => 'bytea',
 
       'datetime:normal' => 'timestamp',
+
+      'serial:normal' => 'serial',
+      'serial:big' => 'bigserial',
       );
   }
   return $map;
@@ -66,6 +66,9 @@ function schema_pgsql_create_table_sql($table) {
   $sql_cols = array();
   foreach ($table['cols'] as $colname => $col) {
     $sql = $colname.' '._schema_type_to_pg($col);
+    if ($col['type'] == 'serial') {
+      unset($col['not null']);
+    }
     unset($col['type']);
     if ($col['length']) {
       $sql .= '('.$col['length'].')';
@@ -91,19 +94,20 @@ function schema_pgsql_create_table_sql($table) {
   }
 
   $sql_keys = array();
-  if (is_array($table['keys'])) { // tables indexes are not required
-    foreach ($table['keys'] as $keyname => $key) {
-      $sql = '';
-      if ($keyname == 'PRIMARY') {
-        $sql = 'PRIMARY KEY ';
-      } else {
-        if ($key[1] == 'UNIQUE') {
-          $sql = 'UNIQUE ';
-        }
-        $sql .= 'KEY '.$keyname.' ';
-      }
-      $sql .= '('.$key[0].')';
-      $sql_keys[] = $sql;
+  if (is_array($table['primary'])) { // tables indexes are not required
+    $sql_keys[] = 'PRIMARY KEY ('.implode(', ', $table['primary']).')';
+  }
+  if (is_array($table['unique'])) {
+    foreach ($table['unique'] as $keyname => $key) {
+      $sql_keys[] = 'UNIQUE ('.implode(', ', $key).')';
+    }
+  }
+  $indices = array();
+  if (is_array($table['index'])) {
+    foreach ($table['index'] as $keyname => $key) {
+      $indices[] = ('CREATE INDEX {'.$table['name'].'}_'.
+        implode('_', $key).'_idx ON {'.$table['name'].'} ('.
+        implode(', ', $key).');');
     }
   }
 
@@ -114,7 +118,11 @@ function schema_pgsql_create_table_sql($table) {
   }
   $sql .= implode(",\n\t", $sql_keys);
   $sql .= "\n";
-  $sql .= ");\n\n";
+  $sql .= ");\n";
+  if (count($indices) > 0) {
+    $sql .= implode("\n", $indices)."\n";
+  }
+  $sql .= "\n";
   return $sql;
 }
 
@@ -134,11 +142,6 @@ function schema_pgsql_inspect($name = NULL) {
   
   $res = db_query($sql, $database, $name);
   while ($r = db_fetch_array($res)) {
-    if (FALSE && !$once && $r['data_type'] == 'character varying') {
-      dpm($r);
-      $once++;
-    }
-
     $numeric = !is_null($r['numeric_scale']);
     $col = array();
     list($col['type'], $col['size']) = _schema_pg_to_type($r['data_type']);
@@ -150,11 +153,25 @@ function schema_pgsql_inspect($name = NULL) {
       list($col['default'], $def_type) = explode('::', $r['column_default']);
       if ($numeric) {
         // XXX floats!
-        $col['default'] = intval($col['default']);
+        if (strpos($col['default'], 'nextval(\'') !== FALSE &&
+          $def_type == 'regclass)') {
+          $col['type'] = 'serial';
+          unset($col['default']);
+        } 
+        else {
+          $col['default'] = intval($col['default']);
+        }
       } else {
         $col['default'] = substr($col['default'], 1, -1);
       }
     }
+
+    if (FALSE && !$once && $r['table_name'] == 'role') {
+      dpm($r);
+      dpm($col);
+      $once++;
+    }
+
     $tables[$r['table_name']]['cols'][$r['column_name']] = $col;
     $tables[$r['table_name']]['name'] = $r['table_name'];
   }
