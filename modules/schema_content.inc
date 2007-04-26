@@ -1,6 +1,59 @@
 <?php
 // $Id$
 
+// From content_admin.inc, these are all 'database columns' types that
+// fields are allowed to return.  They have MySQL semantics, but we
+// cannot depend on the MySQL engine being loaded.
+//
+// 'int', 'mediumint', 'bigint', 'tinyint', 'float', 'varchar',
+// 'text', 'mediumtext', 'longtext'
+//
+// Eventually, CCK fields should switch to using Schema data types
+// directly; then this map and the type_map functions can go away.
+
+function schema_content_engine_type_map() {
+  static $map;
+  if (!isset($map)) {
+    $map = array(
+      'varchar:normal' => 'varchar',
+      
+      //'text:small' => 'smalltext',
+      'text:medium' => 'mediumtext',
+      'text:big' =>  'longtext',
+      'text:normal' => 'text',
+
+      //'serial:normal' => 'int',
+      //'serial:big' => 'bigint',
+
+      'int:tiny' => 'tinyint',
+      //'int:small' => 'smallint',
+      'int:medium' => 'mediumint',
+      'int:big' => 'bigint',
+      'int:normal' => 'int',
+
+      //'float:tiny' => 'float',
+      //'float:small' => 'float',
+      //'float:medium' => 'float',
+      //'float:big' => 'double',
+      'float:normal' => 'float',
+      
+      //'blob:big' => 'longblog',
+      //'blob:normal' => 'blob',
+
+      //'datetime:normal' => 'datetime',
+    );
+  }
+  return $map;
+}
+
+function schema_content_schema_type_map() {
+  static $map;
+  if (!isset($map)) {
+    $map = array_flip(schema_content_engine_type_map());
+  }
+  return $map;
+}
+
 function content_schema() {
   $info = _content_type_info();
 
@@ -16,8 +69,7 @@ function content_schema() {
         'join-type' => 'one'),
       'nid' => array('type' => 'int', 'unsigned' => 1, 'not null' => 1,
         'default' => '0')),
-    'keys' => array(
-      'PRIMARY' => array('vid'))
+    'primary' => array('vid'),
     );
 
   foreach ($info['fields'] as $f) {
@@ -27,7 +79,7 @@ function content_schema() {
       if ($f['multiple']) {
         $schema[$name]['cols']['delta'] = array(
           'type' => 'int', 'unsigned' => 1, 'not null' => 1, 'default' => '0');
-        $schema[$name]['keys']['PRIMARY'][0] .= ', delta';
+        $schema[$name]['primary'][] = 'delta';
         $schema[$name]['cols']['vid']['join-type'] = 'many';
       }
       
@@ -56,25 +108,33 @@ function content_schema() {
 function _content_schema_add_field(&$schema, $tblname, $f) {
   $field_cols = module_invoke($f['type'], 'field_settings', 
     'database columns', $f);
+  if (! isset($field_cols)) {
+    // XXX Is this right?  Sometimes $f['type'] is the module name and
+    // sometimes it isn't but $f['widget']['type'] is, and vice versa.
+    $field_cols = module_invoke($f['widget']['type'], 'field_settings', 
+      'database columns', $f);
+  }
+
   foreach ($field_cols as $f_colname => $f_col) {
     $sc_colname = $f['field_name'].'_'.$f_colname;
     $sc_col = $f_col;
 
-    // XXX CCK (at least as of 5.x) appears not to maintain
-    // the nullable and default properties of columns according to the
-    // 'database columns' specs returned by modules.  Detecting these
-    // errors is a major benefit of Schema's inspection and comparison
-    // features but, during developing, I don't want to be distracted
-    // by mismatches which aren't my fault!  So, for now, I make the
-    // column specifications match what CCK actually does instead of
-    // what it is supposed to do.
-    if ($f_colname != 'format') {
-      $sc_col['not null'] = 0;
+    // normalize CCK field attrs to Schema standards
+    if (is_null($sc_col['default'])) {
       unset($sc_col['default']);
     }
+    else if ($sc_col['default'] === "''") {
+      $sc_col['default'] = '';
+    }
+    if (isset($sc_col['not null'])) {
+      $sc_col['not null'] = ($sc_col['not null'] ? 1 : 0);
+    }
+
+    list($sc_col['type'], $sc_col['size']) = schema_schema_type(
+      $sc_col['type'], 'content');
 
     // Convert CCK field 'length' for int fields into 'disp_width'
-    if (substr($sc_col['type'], 'int') !== FALSE && isset($sc_col['length'])){
+    if ($sc_col['type'] == 'int' && isset($sc_col['length'])) {
       $sc_col['disp_width'] = $sc_col['length'];
       unset($sc_col['length']);
     }

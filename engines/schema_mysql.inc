@@ -1,70 +1,55 @@
 <?php
 // $Id$
 
-function _schema_mysql_type_map() {
+function schema_mysql_engine_type_map() {
   static $map;
   if (!isset($map)) {
     $map = array(
-      'varchar:normal' => 'VARCHAR',
+      'varchar:normal' => 'varchar',
       
-      'text:small' => 'SMALLTEXT',
-      'text:medium' => 'MEDIUMTEXT',
-      'text:big' =>  'LONGTEXT',
-      'text:normal' => 'TEXT',
+      'text:small' => 'smalltext',
+      'text:medium' => 'mediumtext',
+      'text:big' =>  'longtext',
+      'text:normal' => 'text',
 
-      'serial:normal' => 'INT',
-      'serial:big' => 'BIGINT',
+      'serial:normal' => 'int',
+      'serial:big' => 'bigint',
 
-      'int:tiny' => 'TINYINT',
-      'int:small' => 'SMALLINT',
-      'int:medium' => 'MEDIUMINT',
-      'int:big' => 'BIGINT',
-      'int:normal' => 'INT',
+      'int:tiny' => 'tinyint',
+      'int:small' => 'smallint',
+      'int:medium' => 'mediumint',
+      'int:big' => 'bigint',
+      'int:normal' => 'int',
 
-      'float:tiny' => 'FLOAT',
-      'float:small' => 'FLOAT',
-      'float:medium' => 'FLOAT',
-      'float:big' => 'DOUBLE',
-      'float:normal' => 'FLOAT',
+      'float:tiny' => 'float',
+      'float:small' => 'float',
+      'float:medium' => 'float',
+      'float:big' => 'double',
+      'float:normal' => 'float',
       
-      'blob:big' => 'LONGBLOG',
-      'blob:normal' => 'BLOB',
+      'blob:big' => 'longblob',
+      'blob:normal' => 'blob',
 
-      'datetime:normal' => 'DATETIME',
+      'datetime:normal' => 'datetime',
 
     );
   }
   return $map;
 }
 
-function _schema_type_to_mysql($col) {
-  $map = _schema_mysql_type_map();
-  $size = (isset($col['size']) ? $col['size'] : 'normal');
-  $type = $col['type'].':'.$size;
-  if (isset($map[$type])) {
-    return $map[$type];
-  } else {
-    drupal_set_message(t('No MySQL type for Schema type %type.',
-                         array('%type' => $type)), 'error');
-    return $col['type'];
+function schema_mysql_schema_type_map() {
+  static $map;
+  if (!isset($map)) {
+    $map = array_flip(schema_mysql_engine_type_map());
+    $map['character varying'] = 'varchar:normal';
   }
-}
-
-function _schema_mysql_to_type($type) {
-  $map = array_flip(_schema_mysql_type_map()); // inefficient
-  if (isset($map[$type])) {
-    return explode(':', $map[$type]);
-  } else {
-    drupal_set_message(t('No Schema type for MySQL type %type.',
-                         array('%type' => $type)), 'error');
-    return array($type, 'normal');
-  }
+  return $map;
 }
 
 function schema_mysql_create_table_sql($table) {
   $sql_cols = array();
   foreach ($table['cols'] as $colname => $col) {
-    $sql = $colname.' '._schema_type_to_mysql($col);
+    $sql = $colname.' '.schema_engine_type($col, 'mysql');
     if ($col['unsigned']) {
       $sql .= ' UNSIGNED';
     }
@@ -146,7 +131,7 @@ function schema_mysql_inspect($name = NULL) {
     $col['type'] = $r['COLUMN_TYPE'];
     if (preg_match('@([a-z]+)(?:\((\d+)\))?\s*(unsigned)?@', $col['type'],
           $matches)) {
-      $col['type'] = $matches[1];
+      list($col['type'], $col['size']) = schema_schema_type($matches[1], 'mysql');
       if ($matches[2]) {
         if ($numeric) {
           $col['disp_width'] = $matches[2];
@@ -178,6 +163,8 @@ function schema_mysql_inspect($name = NULL) {
   while ($r = db_fetch_array($res)) {
     if ($r['INDEX_NAME'] == 'PRIMARY') {
       $type = 'primary';
+      $tables[$r['TABLE_NAME']][$type][] = $r['COLUMN_NAME'];
+      continue;
     } else if ($r['NON-UNIQUE'] == 0) {
       $type = 'unique';
     } else {

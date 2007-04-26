@@ -50,6 +50,8 @@ function _system_schema_merge($schema) {
 function system_schema()
 {
   $schema['#version'] = '1022';
+  $schema['#inspect-engine'] = 'pgsql';
+
   $schema['access'] = array(
     'cols' => array(
       'aid' => array('type' => 'serial', 'not null' => 1),

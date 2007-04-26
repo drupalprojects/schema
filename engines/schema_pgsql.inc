@@ -1,7 +1,7 @@
 <?php
 // $Id$
 
-function _schema_pgsql_type_map() {
+function schema_pgsql_engine_type_map() {
   static $map;
   if (!isset($map)) {
     // put :normal last so it gets preserved by array_flip
@@ -37,35 +37,19 @@ function _schema_pgsql_type_map() {
   return $map;
 }
 
-function _schema_type_to_pg($col) {
-  $map = _schema_pgsql_type_map();
-  $size = (isset($col['size']) ? $col['size'] : 'normal');
-  $type = $col['type'].':'.$size;
-  if (isset($map[$type])) {
-    return $map[$type].($col['unsigned'] ? '_unsigned' : '');
-  } else {
-    drupal_set_message(t('No PostgreSQL type for Schema type %type.',
-                         array('%type' => $type)), 'error');
-    return $col['type'];
+function schema_pgsql_schema_type_map() {
+  static $map;
+  if (!isset($map)) {
+    $map = array_flip(schema_pgsql_engine_type_map());
+    $map['character varying'] = 'varchar:normal';
   }
-}
-
-function _schema_pg_to_type($type) {
-  $map = array_flip(_schema_pgsql_type_map()); // inefficient
-  $map['character varying'] = 'varchar:normal'; // XXX
-  if (isset($map[$type])) {
-    return explode(':', $map[$type]);
-  } else {
-    drupal_set_message(t('No Schema type for PostgreSQL type %type.',
-                         array('%type' => $type)), 'error');
-    return array($type, 'normal');
-  }
+  return $map;
 }
 
 function schema_pgsql_create_table_sql($table) {
   $sql_cols = array();
   foreach ($table['cols'] as $colname => $col) {
-    $sql = $colname.' '._schema_type_to_pg($col);
+    $sql = $colname.' '.schema_engine_type($col, 'pgsql');
     if ($col['type'] == 'serial') {
       unset($col['not null']);
     }
@@ -144,7 +128,7 @@ function schema_pgsql_inspect($name = NULL) {
   while ($r = db_fetch_array($res)) {
     $numeric = !is_null($r['numeric_scale']);
     $col = array();
-    list($col['type'], $col['size']) = _schema_pg_to_type($r['data_type']);
+    list($col['type'], $col['size']) = schema_schema_type($r['data_type'], 'pgsql');
     if (! $numeric && $r['character_maximum_length']) {
       $col['length'] = $r['character_maximum_length'];
     }
