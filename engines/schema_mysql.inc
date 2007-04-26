@@ -41,7 +41,6 @@ function schema_mysql_schema_type_map() {
   static $map;
   if (!isset($map)) {
     $map = array_flip(schema_mysql_engine_type_map());
-    $map['character varying'] = 'varchar:normal';
   }
   return $map;
 }

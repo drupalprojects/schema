@@ -112,6 +112,17 @@ function system_schema()
     'index' => array(
       'cache_expire_idx' => array('expire')),
     );
+  $schema['cache_content'] = array(
+    'cols' => array(
+      'cid' => array('type' => 'varchar', 'length' => '255', 'not null' => 1, 'default' => ''),
+      'data' => array('type' => 'blob', 'not null' => 0),
+      'expire' => array('type' => 'int', 'not null' => 1, 'default' => 0),
+      'created' => array('type' => 'int', 'not null' => 1, 'default' => 0),
+      'headers' => array('type' => 'text', 'not null' => 0)),
+    'primary' => array('cid'),
+    'index' => array(
+      'cache_content_expire_idx' => array('expire')),
+    );
   $schema['cache_filter'] = array(
     'cols' => array(
       'cid' => array('type' => 'varchar', 'length' => '255', 'not null' => 1, 'default' => ''),

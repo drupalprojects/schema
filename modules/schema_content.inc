@@ -60,6 +60,29 @@ function content_schema() {
   $schema = array();
   $fields = array();
 
+  $schema['node_field'] = array(
+    'cols' => array(
+      'field_name' => array('type' => 'varchar', 'length' => '32', 'not null' => 1, 'default' => ''),
+      'type' => array('type' => 'varchar', 'length' => '127', 'not null' => 1, 'default' => ''),
+      'global_settings' => array('type' => 'text', 'not null' => 1),
+      'required' => array('type' => 'int', 'not null' => 1, 'default' => 0),
+      'multiple' => array('type' => 'int', 'not null' => 1, 'default' => 0),
+      'db_storage' => array('type' => 'int', 'not null' => 1, 'default' => 0)),
+    'primary' => array('field_name'),
+    );
+  $schema['node_field_instance'] = array(
+    'cols' => array(
+      'field_name' => array('type' => 'varchar', 'length' => '32', 'not null' => 1, 'default' => ''),
+      'type_name' => array('type' => 'varchar', 'length' => '32', 'not null' => 1, 'default' => ''),
+      'weight' => array('type' => 'int', 'not null' => 1, 'default' => 0),
+      'label' => array('type' => 'varchar', 'length' => '255', 'not null' => 1, 'default' => ''),
+      'widget_type' => array('type' => 'varchar', 'length' => '32', 'not null' => 1, 'default' => ''),
+      'widget_settings' => array('type' => 'text', 'not null' => 1),
+      'display_settings' => array('type' => 'text', 'not null' => 1),
+      'description' => array('type' => 'text', 'not null' => 1)),
+    'primary' => array('field_name', 'type_name'),
+    );
+
   // All CCK content type and field tables share these properties.
   $base = array(
     'cols' => array(
