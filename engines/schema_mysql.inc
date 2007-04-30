@@ -49,22 +49,22 @@ function schema_mysql_create_table_sql($table) {
   $sql_cols = array();
   foreach ($table['cols'] as $colname => $col) {
     $sql = $colname.' '.schema_engine_type($col, 'mysql');
-    if ($col['unsigned']) {
+    if (isset($col['unsigned']) && $col['unsigned']) {
       $sql .= ' UNSIGNED';
     }
     unset($col['unsigned']);
-    if ($col['length']) {
+    if (isset($col['length']) && $col['length']) {
       $sql .= '('.$col['length'].')';
-    } else if ($col['disp-width']) {
+    } else if (isset($col['disp-width']) && $col['disp-width']) {
       $sql .= '('.$col['disp-width'].')';
     }
-    if ($col['type'] == 'serial') {
+    if (isset($col['type']) && $col['type'] == 'serial') {
       $sql .= ' AUTO_INCREMENT';
     }
     unset($col['type']);
     unset($col['length']);
     unset($col['disp-width']);
-    if ($col['not null']) {
+    if (isset($col['not null']) && $col['not null']) {
       $sql .= ' NOT NULL';
     }
     unset($col['not null']);
@@ -88,7 +88,7 @@ function schema_mysql_create_table_sql($table) {
     $sql_keys[] = 'PRIMARY KEY ('.implode(', ', $table['primary']).')';
   }
   foreach (array('unique', 'index') as $type) {
-    if (is_array($table[$type])) {
+    if (isset($table[$type]) && is_array($table[$type])) {
       foreach ($table[$type] as $keyname => $key) {
         $sql = '';
         if ($type == 'unique') {
