@@ -22,13 +22,13 @@
 function schema_install() {
   drupal_load('module', 'schema');
   $my_schema = module_invoke('schema', 'schema');
-  schema_create_schema($my_schema);
+  //  schema_create_schema($my_schema);
 }
 
 function schema_uninstall() {
   drupal_load('module', 'schema');
   $my_schema = module_invoke('schema', 'schema');
-  schema_drop_schema($my_schema);
+  //  schema_drop_schema($my_schema);
 }
 
 ?>

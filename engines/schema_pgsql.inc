@@ -49,49 +49,16 @@ function schema_pgsql_schema_type_map() {
 function schema_pgsql_create_table_sql($table) {
   $sql_cols = array();
   foreach ($table['cols'] as $colname => $col) {
-    $sql = $colname.' '.schema_engine_type($col, 'pgsql');
-    if ($col['type'] == 'serial') {
-      unset($col['not null']);
-    }
-    unset($col['type']);
-    if ($col['length']) {
-      $sql .= '('.$col['length'].')';
-    }
-    unset($col['length']);
-    if ($col['not null']) {
-      $sql .= ' NOT NULL';
-    }
-    unset($col['not null']);
-    foreach ($col as $prop => $val) {
-      switch ($prop) {
-        case 'default':
-          $sql .= " $prop ";
-          if (is_string($val)) {
-            $sql .= "'$val'";
-          } else {
-            $sql .= $val;
-          }
-          break;
-      }
-    }
-    $sql_cols[] = $sql;
+    $sql_cols[] = schema_pgsql_create_column_sql($colname, $col);
   }
 
   $sql_keys = array();
-  if (is_array($table['primary'])) { // tables indexes are not required
+  if (isset($table['primary']) && is_array($table['primary'])) {
     $sql_keys[] = 'PRIMARY KEY ('.implode(', ', $table['primary']).')';
   }
-  if (is_array($table['unique'])) {
+  if (isset($table['unique']) && is_array($table['unique'])) {
     foreach ($table['unique'] as $keyname => $key) {
       $sql_keys[] = 'UNIQUE ('.implode(', ', $key).')';
-    }
-  }
-  $indices = array();
-  if (is_array($table['index'])) {
-    foreach ($table['index'] as $keyname => $key) {
-      $indices[] = ('CREATE INDEX {'.$table['name'].'}_'.
-        implode('_', $key).'_idx ON {'.$table['name'].'} ('.
-        implode(', ', $key).');');
     }
   }
 
@@ -101,12 +68,46 @@ function schema_pgsql_create_table_sql($table) {
     $sql .= ",\n\t";
   }
   $sql .= implode(",\n\t", $sql_keys);
-  $sql .= "\n";
-  $sql .= ");\n";
-  if (count($indices) > 0) {
-    $sql .= implode("\n", $indices)."\n";
+  $sql .= "\n)";
+  $stmts[] = $sql;
+
+  if (is_array($table['index'])) {
+    foreach ($table['index'] as $keyname => $key) {
+      $stmts[] = ('CREATE INDEX {'.$table['name'].'}_'.
+        implode('_', $key).'_idx ON {'.$table['name'].'} ('.
+        implode(', ', $key).')');
+    }
   }
-  $sql .= "\n";
+
+  return $stmts;
+}
+
+function schema_pgsql_create_column_sql($colname, $col) {
+  $sql = $colname.' '.schema_engine_type($col, 'pgsql');
+  if ($col['type'] == 'serial') {
+    unset($col['not null']);
+  }
+  unset($col['type']);
+  if ($col['length']) {
+    $sql .= '('.$col['length'].')';
+  }
+  unset($col['length']);
+  if ($col['not null']) {
+    $sql .= ' NOT NULL';
+  }
+  unset($col['not null']);
+  foreach ($col as $prop => $val) {
+    switch ($prop) {
+      case 'default':
+        $sql .= " $prop ";
+        if (is_string($val)) {
+          $sql .= "'$val'";
+        } else {
+          $sql .= $val;
+        }
+        break;
+    }
+  }
   return $sql;
 }
 

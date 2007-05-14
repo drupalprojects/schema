@@ -198,7 +198,11 @@ function schema_create_table_sql($spec) {
 }
 
 function schema_create_table($spec) {
-  return db_query(schema_invoke('create_table_sql', $spec));
+  $stmts = schema_invoke('create_table_sql', $spec);
+  foreach ($stmts as $stmt) {
+    // XXX check status, record errors
+    db_query($stmt);
+  }
 }
 
 function schema_drop_table($spec) {
@@ -743,10 +747,12 @@ function schema_sql($engine = NULL) {
         continue;
       }
       if ($engine) {
-        $sql .= call_user_func('schema_'.$engine.'_create_table_sql', $table);
+        $stmts = call_user_func('schema_'.$engine.'_create_table_sql', $table);
       } else {
-        $sql .= schema_create_table_sql($table);
+        $stmts = schema_create_table_sql($table);
       }
+
+      $sql .= implode(";\n", $stmts).";\n\n";
     }
   }
     
