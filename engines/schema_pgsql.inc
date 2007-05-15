@@ -56,8 +56,8 @@ function schema_pgsql_create_table_sql($table) {
   if (isset($table['primary']) && is_array($table['primary'])) {
     $sql_keys[] = 'PRIMARY KEY ('.implode(', ', $table['primary']).')';
   }
-  if (isset($table['unique']) && is_array($table['unique'])) {
-    foreach ($table['unique'] as $keyname => $key) {
+  if (isset($table['unique keys']) && is_array($table['unique keys'])) {
+    foreach ($table['unique keys'] as $keyname => $key) {
       $sql_keys[] = 'UNIQUE ('.implode(', ', $key).')';
     }
   }
@@ -71,8 +71,8 @@ function schema_pgsql_create_table_sql($table) {
   $sql .= "\n)";
   $stmts[] = $sql;
 
-  if (is_array($table['index'])) {
-    foreach ($table['index'] as $keyname => $key) {
+  if (is_array($table['indexes'])) {
+    foreach ($table['indexes'] as $keyname => $key) {
       $stmts[] = ('CREATE INDEX {'.$table['name'].'}_'.
         implode('_', $key).'_idx ON {'.$table['name'].'} ('.
         implode(', ', $key).')');
@@ -126,16 +126,16 @@ function schema_pgsql_inspect($tbl_name = NULL) {
   // added to our array in the same order.
   //
   $sql = ('SELECT * FROM information_schema.COLUMNS '.
-	  'WHERE TABLE_CATALOG=\'%s\' AND TABLE_SCHEMA=\'public\'');
+	  'WHERE table_catalog=\'%s\' AND table_schema=\'public\'');
   if (isset($tbl_name)) {
-    $sql .= 'AND TABLE_NAME = \'%s\' ';
+    $sql .= 'AND table_name = \'%s\' ';
   }
-  $sql .= 'ORDER BY TABLE_NAME, ORDINAL_POSITION';
+  $sql .= 'ORDER BY table_name, ordinal_position';
   
   $res = db_query($sql, $database, $tbl_name);
 
   //
-  // Add an entry to $tables[<tablename>]['cols'] for each column.  $r
+  // Add an entry to $tables[<tablename>]['fields'] for each column.  $r
   // is a row from information_schema.columns.  $col is the Schema
   // column structure we build up from it.
   //
@@ -156,7 +156,7 @@ function schema_pgsql_inspect($tbl_name = NULL) {
     }
 
     // Any column can have NOT NULL.
-    $col['not null'] = ($r['is_nullable'] == 'YES' ? 0 : 1);
+    $col['not null'] = ($r['is_nullable'] == 'YES' ? FALSE : TRUE);
 
     // Any column might have a default value.  We have to set
     // $col['default'] to the correct type of data.  Remember that '',
@@ -166,7 +166,12 @@ function schema_pgsql_inspect($tbl_name = NULL) {
       // pgsql's column_default can have ::typename appended,
       // nextval('<sequence_name>') if it is serial, etc.  Here, we're
       // just splitting out the actual default value.
-      list($col['default'], $def_type) = explode('::', $r['column_default']);
+      if (strpos($r['column_default'], '::') !== FALSE) {
+        list($col['default'], $def_type) = explode('::', $r['column_default']);
+      } else {
+        $col['default'] = $r['column_default'];
+        $def_type = '';
+      }
       
       if ($numeric) {
         // $col['default'] is currently a string.  If the column is
@@ -192,21 +197,46 @@ function schema_pgsql_inspect($tbl_name = NULL) {
         $col['default'] = substr($col['default'], 1, -1);
       }
 
-      // Set $col['unsigned'] if the column is unsigned.
-      // XXX These domains are currently defined in system.install.
-      // This engine should probably create and own them, however.
-      switch ($r['domain_name']) {
-        case 'int_unsigned':
-        case 'smallint_unsigned':
-        case 'bigint_unsigned':
-          $col['unsigned'] = 1;
-          break;
-      }
+    }
+
+    // Set $col['unsigned'] if the column is unsigned.
+    // XXX These domains are currently defined in system.install.
+    // This engine should probably create and own them, however.
+    switch ($r['domain_name']) {
+      case 'int_unsigned':
+      case 'smallint_unsigned':
+      case 'bigint_unsigned':
+        $col['unsigned'] = 1;
+        break;
+    }
+    if (isset($r['check_clause']) && $r['check_clause'] == '(('. $r['column_name'] .' => 0))') {
+      $col['unsigned'] = 1;
+    }
+
+    if (FALSE && !isset($once) && $r['column_name'] == 'bid' && $r['table_name'] == 'boxes') {
+      dpm($r);
+      dpm($col);
+      $once = 1;
     }
 
     // Save the column definition we just derived from $r.
-    $tables[$r['table_name']]['cols'][$r['column_name']] = $col;
+    $tables[$r['table_name']]['fields'][$r['column_name']] = $col;
     $tables[$r['table_name']]['name'] = $r['table_name'];
+  }
+
+  //
+  // Make sur we caught all the unsigned columns.  I could not get
+  // this to work as a left join on the previous query.
+  //
+  $res = db_query('SELECT ccu.*, cc.check_clause '.
+    'FROM information_schema.constraint_column_usage ccu '.
+    'INNER JOIN information_schema.check_constraints cc '.
+    '  ON ccu.constraint_name=cc.constraint_name '.
+    'WHERE table_schema=\'public\'');
+  while ($r = db_fetch_array($res)) {
+    if ($r['check_clause'] == '(('. $r['column_name'] .' >= 0))') {
+      $tables[$r['table_name']]['fields'][$r['column_name']]['unsigned'] =TRUE;
+    }
   }
 
   //
@@ -224,18 +254,23 @@ function schema_pgsql_inspect($tbl_name = NULL) {
     $database);
 
   //
-  // Add an entry to $tables[<tablename>]['primary'] or ['unique'] for
-  // each column involed in a key.  $r is a row from
-  // information_schema.  Remember that 'primary' is an array of
-  // column names but 'unique' is a hash table mapping key name to an
-  // array of column names.
+  // Add an entry to $tables[<tablename>]['primary key'] or ['unique
+  // keys'] for each column involed in a key.  $r is a row from
+  // information_schema.  Remember that 'primary key' is an array of
+  // column names but 'unique keys' is a hash table mapping key name
+  // to an array of column names.
+  //
+  // Normalize key names <table>_<cols>_key to just <cols>.
   //
   while ($r = db_fetch_array($res)) {
     $name = $r['constraint_name'];
+    if (preg_match('@^'.$r['table_name'].'_(.*)_key$@', $name, $m)) {
+      $name = $m[1];
+    }
     if ($r['constraint_type'] == 'PRIMARY KEY') {
-      $tables[$r['table_name']]['primary'][] = $r['column_name'];
+      $tables[$r['table_name']]['primary key'][] = $r['column_name'];
     } else {
-      $tables[$r['table_name']]['unique'][$name][] = $r['column_name'];
+      $tables[$r['table_name']]['unique keys'][$name][] = $r['column_name'];
     }
   }
 
@@ -286,14 +321,17 @@ function schema_pgsql_inspect($tbl_name = NULL) {
     '        WHEN i.indkey[9]=a.attnum THEN 9 END ');
 
   //
-  // Add an entry to $tables[<tablename>]['index'] for each column
-  // involed in an index (non-unique key).  Remember that ['index'] is
-  // like ['unique']: a hash table mapping index name to an array of
+  // Add an entry to $tables[<tablename>]['indexes'] for each column
+  // involed in an index (non-unique key).  Remember that ['indexes'] is
+  // like ['unique keys']: a hash table mapping index name to an array of
   // column names.
   //
   while ($r = db_fetch_array($res)) {
-    //dpm($r);
-    $tables[$r['tblname']]['index'][$r['idxname']][] = $r['attname'];
+    $name = $r['idxname'];
+    if (preg_match('@^'.$r['tblname'].'_(.*)_idx$@', $name, $m)) {
+      $name = $m[1];
+    }
+    $tables[$r['tblname']]['indexes'][$name][] = $r['attname'];
   }
 
   // All done!  Visit admin/build/schema/inspect to see the

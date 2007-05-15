@@ -3,35 +3,6 @@
 
 global $schema_engines;
 
-// schema_schema: The database schema for schema.module.  Used
-// (eventually) to store information about which modules own which
-// tables, each module's schema version, etc.  Currently it is really
-// only here as a demonstration.
-//
-function schema_schema() {
-  $schema['#version'] = 1;
-
-  $schema['schema_modules'] = array(
-    'name' => 'schema_modules',
-    'cols' => array(
-      'mid' => array('type' => 'int', 'not null' => 1),
-      'name' => array('type' => 'varchar', 'length' => 255, 'not null' => 1),
-      ),
-    'primary' => array('mid'));
-  
-  $schema['schema_tables'] = array(
-    'name' => 'schema_tables',
-    'cols' => array(
-      'tid' => array('type' => 'int', 'not null' => 1),
-      'name' => array('type' => 'varchar', 'length' => 255, 'not null' => 1),
-      'mid' => array('type' => 'int', 'not null' => 1,
-        'join' => array('schema', 'schema_modules', 'mid'))),
-    'primary' => array('tid'),
-    'index' => array(
-      'index' => array('mid')));
-  return $schema;
-}
-
 // schema_phpprint: Return a pretty ASCII-formatted version of a
 // $schema array.  This is nothing more than a specialized variation
 // of var_dump and similar functions and is used only as a convenience
@@ -40,6 +11,7 @@ function schema_schema() {
 // and for debugging.
 //
 function schema_phpprint($schema) {
+  $out = '';
   foreach ($schema as $name => $table) {
     if (substr($name, 0, 1) == '#') {
       $out .= "\$schema['$name'] = '$table';\n";
@@ -47,33 +19,33 @@ function schema_phpprint($schema) {
     }
     
     $cols = array();
-    foreach ($table['cols'] as $colname => $col) {
+    foreach ($table['fields'] as $colname => $col) {
       $cols[] = "'$colname' => ".schema_phpprint_column($col);
     }
     $unique = $index = array();
-    if (is_array($table['unique'])) {
-      foreach ($table['unique'] as $keyname => $key) {
-        $unique[] = "'$keyname' => array('".implode("', '", $key)."')";
+    if (isset($table['unique keys'])) {
+      foreach ($table['unique keys'] as $keyname => $key) {
+        $unique[] = "'$keyname' => ".schema_phpprint_key($key);
       }
     }
-    if (is_array($table['index'])) {
-      foreach ($table['index'] as $keyname => $key) {
-        $index[] = "'$keyname' => array('".implode("', '", $key)."')";
+    if (isset($table['indexes'])) {
+      foreach ($table['indexes'] as $keyname => $key) {
+        $index[] = "'$keyname' => ".schema_phpprint_key($key);
       }
     }
-    $out .= "\$schema['".$name."'] = array(\n    'cols' => array(\n         ";
+    $out .= "\$schema['".$name."'] = array(\n    'fields' => array(\n         ";
     $out .= implode(",\n         ", $cols);
     $out .= "),\n";
-    if (is_array($table['primary'])) {
-      $out .= "    'primary' => array('".implode("', '", $table['primary'])."'),\n";
+    if (isset($table['primary key'])) {
+      $out .= "    'primary key' => array('".implode("', '", $table['primary key'])."'),\n";
     }
     if (count($unique) > 0) {
-      $out .= "    'unique' => array(\n         ";
+      $out .= "    'unique keys' => array(\n         ";
       $out .= implode(",\n         ", $unique);
       $out .= "),\n";
     }
     if (count($index) > 0) {
-      $out .= "    'index' => array(\n         ";
+      $out .= "    'indexes' => array(\n         ";
       $out .= implode(",\n         ", $index);
       $out .= "),\n";
     }
@@ -108,8 +80,16 @@ function schema_phpprint_column($col) {
   return "array(".implode(', ', $attrs).")";
 }
 
-function schema_phpprint_key($key) {
-  return "array('".implode("', '", $key)."')";
+function schema_phpprint_key($keys) {
+  $ret = array();
+  foreach ($keys as $key) {
+    if (is_array($key)) {
+      $ret[] = "array('$key[0]', $key[1])";
+    } else {
+      $ret[] = "'$key'";
+    }
+  }
+  return "array(".implode(", ", $ret).")";
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -219,8 +199,8 @@ function schema_compare_schemas($ref, $inspect = NULL) {
   }
   
   $info = array();
-  foreach ($ref as $module => $tables) {
-    foreach ($tables as $name => $table) {
+    foreach ($ref as $name => $table) {
+      $module = $table['module'];
       if ($name == '#inspect-engine') {
         global $db_type;
         if ($table != $db_type) {
@@ -236,11 +216,16 @@ EOT;
       if (substr($name, 0, 1) == '#') {
         continue;
       }
-      $status = schema_compare_table($table, $inspect[$name]);
-      $info[$status['status']][$module][$name] = $status;
-      unset($inspect[$name]);
+      // XXX
+      if (!isset($inspect[$name])) {
+        $info['xxx missing'][$module][$name] = array('status' => 'missing');
+      } else {
+        $status = schema_compare_table($table, $inspect[$name]);
+        $info[$status['status']][$module][$name] = $status;
+        unset($inspect[$name]);
+      }
     }
-  }
+
   foreach ($inspect as $name => $table) {
     $info['extra'][] = $name;
   }
@@ -252,6 +237,8 @@ EOT;
 // the database.  If $inspect is not provided, the database is inspected.
 //
 function schema_compare_table($ref, $inspect = NULL, &$reasons = array()) {
+  global $db_type;
+
   if (! isset($inspect)) {
     $inspect = schema_invoke('inspect', $ref['name']);
     $inspect = $inspect[$ref['name']];
@@ -263,7 +250,7 @@ function schema_compare_table($ref, $inspect = NULL, &$reasons = array()) {
   $reasons = $notes = array();
   $col_keys = array_flip(
     array('type', 'size', 'not null', 'length', 'unsigned', 'default'));
-  foreach ($ref['cols'] as $colname => $col) {
+  foreach ($ref['fields'] as $colname => $col) {
 
     // Many Schema types can map to the same engine type (e.g. in
     // PostgresSQL, text:{small,medium,big} are all just text).  When
@@ -271,54 +258,68 @@ function schema_compare_table($ref, $inspect = NULL, &$reasons = array()) {
     // reference we are comparing against can have a specific type.
     // We therefore run the reference's specific type through the
     // type conversion cycle to get its common type for comparison.
+    // XXX hack
+    $serial = ($col['type'] == 'serial' ? TRUE : FALSE);
     $dbtype = schema_engine_type($col);
     list($col['type'], $col['size']) = schema_schema_type($dbtype);
+    if ($serial) {
+      $col['type'] = 'serial';
+    }
+
+    // If an engine-specific type is specified, use it.  XXX $inspect
+    // will contain the schema type for the engine type, if one
+    // exists, whereas dbtype_type contains the engine type.
+    if (isset($col[$db_type .'_type'])) {
+      $col['type'] = $col[$db_type .'_type'];
+    }
 
     $col = array_intersect_key($col, $col_keys);
-    if (! isset($inspect['cols'][$colname])) {
+    if (! isset($inspect['fields'][$colname])) {
       $reasons[] = "$colname: not in database";
       continue;
     }
-    $colcmp1 = array_diff_assoc($col, $inspect['cols'][$colname]);
+    // XXX These should be unified so one reason contains all
+    // mismatches between the columns.
+    $colcmp1 = array_diff_assoc($col, $inspect['fields'][$colname]);
     if (count($colcmp1) != 0) {
       foreach ($colcmp1 as $key => $val) {
         $reasons[] = ("column $colname:<br/>declared: ".
           schema_phpprint_column($col).'<br/>actual: '.
-          schema_phpprint_column($inspect['cols'][$colname]));
+          schema_phpprint_column($inspect['fields'][$colname]));
       }
     }
-    $colcmp2 = array_diff_assoc($inspect['cols'][$colname], $col);
+    $colcmp2 = array_diff_assoc($inspect['fields'][$colname], $col);
     if (count($colcmp2) != 0) {
       foreach ($colcmp2 as $key => $val) {
-        if (isset($col_keys[$key]) && !($key == 'size' && $val == 'normal')) {
+        if (isset($col_keys[$key]) && !isset($colcmp1[$key])) {
           $reasons[] = ("column $colname:<br/>declared: ".
             schema_phpprint_column($col).'<br/>actual: '.
-            schema_phpprint_column($inspect['cols'][$colname]));
+            schema_phpprint_column($inspect['fields'][$colname]));
         }
       }
     }
-    unset($inspect['cols'][$colname]);
+    unset($inspect['fields'][$colname]);
   }
-  foreach ($inspect['cols'] as $colname => $col) {
+  foreach ($inspect['fields'] as $colname => $col) {
     $reasons[] = "$colname: unexpected column in database";
   }
 
-  if (is_array($ref['primary'])) {
-    if (! isset($inspect['primary'])) {
+  if (isset($ref['primary key'])) {
+    if (! isset($inspect['primary key'])) {
       $reasons[] = "primary: missing in database";
     }
-    else if ($ref['primary'] !== $inspect['primary']) {
+    else if ($ref['primary key'] !== $inspect['primary key']) {
       $reasons[] = ("primary key:<br />declared: ".
-        schema_phpprint_key($ref['primary']).'<br />actual: '.
-        schema_phpprint_key($inspect['primary']));
+        schema_phpprint_key($ref['primary key']).'<br />actual: '.
+        schema_phpprint_key($inspect['primary key']));
     }
   } 
-  else if (isset($inspect['primary'])) {
+  else if (isset($inspect['primary key'])) {
     $reasons[] = "primary: missing in schema";
   }
 
-  foreach (array('unique', 'index') as $type) {
-    if (is_array($ref[$type])) {
+  foreach (array('unique keys', 'indexes') as $type) {
+    if (isset($ref[$type])) {
       foreach ($ref[$type] as $keyname => $key) {
         if (! isset($inspect[$type][$keyname])) {
           $reasons[] = "$type $keyname: missing in database";
@@ -333,7 +334,7 @@ function schema_compare_table($ref, $inspect = NULL, &$reasons = array()) {
         unset($inspect[$type][$keyname]);
       }
     }
-    if (is_array($inspect[$type])) {
+    if (isset($inspect[$type])) {
       foreach ($inspect[$type] as $keyname => $col) {
         // this is not an error, the dba might have added it on purpose
         $notes[] = "$type $keyname: unexpected (not an error)";
@@ -375,7 +376,7 @@ function schema_invoke_all() {
 
   // XXX Drupal 5's primary key for node is (nid,vid) but I
   // (currently) think that is a mistake.
-  $schema['system']['node']['primary'] = array('nid');
+  $schema['system']['node']['primary key'] = array('nid');
 
   // Compute and store inverted join information so each table knows
   // which other tables join to it.
@@ -384,7 +385,7 @@ function schema_invoke_all() {
       if (substr($t_name, 0, 1) == '#') {
         continue;
       }
-      foreach ($table['cols'] as $c_name => $col) {
+      foreach ($table['fields'] as $c_name => $col) {
         if (isset($col['join'])) {
           list($to_mod, $to_tab, $to_col) = $col['join'];
           $schema[$to_mod][$to_tab]['join-from'][] = array(
@@ -423,37 +424,39 @@ function schema_invoke_all() {
 // joins that will never produce any results.  It is currently only
 // used for node.
 function _schema_generate_table(&$schema, $module, $t_name, $o_type = NULL) {
+  return; // XXX
+
   $table = $schema[$module][$t_name];
 
   // We can't build a WHERE clause for a table without a primary key.
-  if (!isset($table['primary'])) {
+  if (!isset($table['primary key'])) {
     return;
   }
   // SELECT each column individually from the primary table so
   // we can access it by name.
-  foreach ($table['cols'] as $c_name => $col) {
+  foreach ($table['fields'] as $c_name => $col) {
     $sel_as = "${t_name}_${c_name}";
     $selcols[$t_name][] = $sel_as;
     $sels[] = "$t_name.$c_name as $sel_as";
   }
-  foreach ($table['primary'] as $pcol) {
+  foreach ($table['primary key'] as $pcol) {
     $primarys[$t_name][] = "${t_name}_${pcol}";
-    switch ($table['cols'][$pcol]['type']) {
-    case 'int': 
-    case 'mediumint':
-    case 'tinyint':
-    case 'bigint':
-    case 'float':
-      $wheres[] = "${t_name}.${pcol}=%d";
-      break;
-    default:
-      $wheres[] = "${t_name}.{$pcol}='%s'";
-      break;
+    switch ($table['fields'][$pcol]['type']) {
+      case 'int': 
+      case 'mediumint':
+      case 'tinyint':
+      case 'bigint':
+      case 'float':
+        $wheres[] = "${t_name}.${pcol}=%d";
+        break;
+      default:
+        $wheres[] = "${t_name}.{$pcol}='%s'";
+        break;
     }
   }
 
   $joins = array();
-  if (!is_array($schema[$module][$t_name]['join-from'])) {
+  if (!isset($schema[$module][$t_name]['join-from'])) {
     $schema[$module][$t_name]['join-from'] = array();
   }
 
@@ -462,22 +465,22 @@ function _schema_generate_table(&$schema, $module, $t_name, $o_type = NULL) {
     list($my_col, $to_mod, $to_tab, $to_col, $join_type) = $join;
     $table = $schema[$to_mod][$to_tab];
 
-    if (isset($o_type) && is_array($table['cols'][$to_col][$t_name.'-types'])&&
-	array_search($o_type, $table['cols'][$to_col][$t_name.'-types'])
-	=== FALSE) {
+    if (isset($o_type) && is_array($table['fields'][$to_col][$t_name.'-types'])&&
+      array_search($o_type, $table['fields'][$to_col][$t_name.'-types'])
+      === FALSE) {
       continue;
     }
     
     // SELECT each column individually from the joined table so
     // we can access it by name.
-    foreach ($table['cols'] as $c_name => $col) {
+    foreach ($table['fields'] as $c_name => $col) {
       $sel_as = "${to_tab}_${c_name}";
       $selcols[$to_tab][] = $sel_as;
       $sels[] = "$to_tab.$c_name as $sel_as";
     }
 
-    if (isset($table['primary'])) {
-      foreach ($table['primary'] as $pcol) {
+    if (isset($table['primary key'])) {
+      foreach ($table['primary key'] as $pcol) {
         $primarys[$to_tab][] = "${to_tab}_${pcol}";
       }
     } else {
@@ -569,60 +572,53 @@ function schema_perm() {
   return array('administer schema');
 }
 
-function schema_menu($may_cache) {
-  $items = array();
-  if ($may_cache) {
-    $items[] = array(
-      'path' => 'admin/build/schema',
-      'title' => t('Schema'),
-      'description' => t('Manage the database schema for this system.'),
-      'callback' => 'schema_report',
-      'access' => user_access('administer schema'),
-      );
+function schema_menu() {
+  $items['admin/build/schema'] = array(
+    'title' => 'Schema',
+    'description' => 'Manage the database schema for this system.',
+    'page callback' => 'schema_report',
+    'access arguments' => array('administer schema'),
+    );
 
-    $items[] = array(
-      'path' => 'admin/build/schema/report',
-      'title' => t('Compare'),
-      'type' => MENU_DEFAULT_LOCAL_TASK,
-      'callback' => 'schema_report',
-      'weight' => -10,
-      );
+  $items['admin/build/schema/report'] = array(
+    'title' => 'Compare',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'page callback' => 'schema_report',
+    'weight' => -10,
+    );
 
 
-    $items[] = array(
-      'path' => 'admin/build/schema/inspect',
-      'title' => t('Inspect'),
-      'type' => MENU_LOCAL_TASK,
-      'callback' => 'schema_inspect',
-      );
+  $items['admin/build/schema/inspect'] = array(
+    'title' => 'Inspect',
+    'type' => MENU_LOCAL_TASK,
+    'page callback' => 'schema_inspect',
+    );
 
-    $items[] = array(
-      'path' => 'admin/build/schema/sql',
-      'title' => t('SQL'),
-      'type' => MENU_LOCAL_TASK,
-      'callback' => 'schema_sql',
-      );
+  $items['admin/build/schema/sql'] = array(
+    'title' => 'SQL',
+    'type' => MENU_LOCAL_TASK,
+    'page callback' => 'schema_sql',
+    );
 
-    global $db_type, $schema_engines;
+  global $db_type, $schema_engines;
+  if (isset($schema_engines) && is_array($schema_engines)) {
     foreach ($schema_engines as $engine) {
-      $items[] = array(
-        'path' => 'admin/build/schema/sql/'.$engine,
+      $items['admin/build/schema/sql/'.$engine] = array(
         'title' => t($engine),
         'type' => ($engine == $db_type ? MENU_DEFAULT_LOCAL_TASK : 
           MENU_LOCAL_TASK),
-        'callback' => 'schema_sql',
+        'page callback' => 'schema_sql',
         'callback arguments' => $engine,
         );
     }
-
-    $items[] = array(
-      'path' => 'admin/build/schema/show',
-      'title' => t('Show'),
-      'type' => MENU_LOCAL_TASK,
-      'callback' => 'schema_show',
-      'weight' => 10,
-      );
   }
+
+  $items['admin/build/schema/show'] = array(
+    'title' => 'Show',
+    'type' => MENU_LOCAL_TASK,
+    'page callback' => 'schema_show',
+    'weight' => 10,
+    );
 
   return $items;
 }
@@ -640,17 +636,17 @@ function schema_report() {
     'same' => 'Tables for which the schema and database agree.',
     'different' => 'Tables for which the schema and database are different.',
     'missing' => 'Tables in the schema that are not present in the database.',
-    'extra' => 'Tables in the database that are not present in the schema.',
+    'extra' => 'Tables in the database that are not present in the schema.  This probably indicates modules that do not use the Schema API.',
     );
 
-  $generate = schema_invoke_all();
+  $generate = drupal_get_schema();
   $info = schema_compare_schemas($generate);
 
   foreach ($info as $state => $modules) {
+    $counts[$state] = 0;
+    $data[$state] = ($state == 'extra' ? array() : '');
+
     if ($state == 'extra') {
-      if (!is_array($data[$state])) {
-        $data[$state] = array();
-      }
       $data[$state] = array_merge($data[$state], $modules);
       $counts[$state] += count($modules);
       continue;
@@ -683,6 +679,7 @@ function schema_report() {
             '#title' => t($module),
             '#collapsible' => TRUE,
             '#collapsed' => TRUE,
+            '#value' => '',
             );
           $form[$module]['content'] = array(
             '#value' => theme('item_list', $items),
@@ -692,27 +689,30 @@ function schema_report() {
       }
     }
   }
-  $data['extra'] = theme('item_list', $data['extra']);
+  if (isset($data['extra'])) {
+    $data['extra'] = theme('item_list', $data['extra']);
+  }
 
   $form = array();
   $weight = 0;
   foreach ($states as $state => $content) {
-    $content = $data[$state];
+    $content = (isset($data[$state]) ? $data[$state] : '');
     $form[$state] = array(
       '#type' => 'fieldset',
       '#title' => t('@state (@count)', 
-        array('@state' => $states[$state], '@count' => $counts[$state] ? $counts[$state] : 0)),
+        array('@state' => $states[$state], '@count' => isset($counts[$state]) ? $counts[$state] : 0)),
       '#description' => t($descs[$state]),
       '#collapsible' => TRUE,
       '#collapsed' => TRUE,
       '#weight' => $weight++,
+      '#value' => '',
       );
     $form[$state]['content'] = array(
       '#type' => 'markup',
       '#value' => $content);
   }
 
-  $output .= <<<EOT
+  $output = <<<EOT
 <p>This page compares the live database as it currently exists against
 the combination of all schema information provided by all enabled modules.</p>
 EOT;
@@ -724,7 +724,7 @@ EOT;
 function schema_inspect() {
   $inspect = schema_invoke('inspect');
   $pp = schema_phpprint($inspect);
-  $output .= <<<EOT
+  $output = <<<EOT
 <p>This page shows the live database schema as it currently
 exists on this system.  The data structure is generated dynamically
 and includes all tables.  No relationship
@@ -740,21 +740,20 @@ EOT;
 }
 
 function schema_sql($engine = NULL) {
-  $schema = schema_invoke_all();
-  foreach ($schema as $module => $tables) {
-    foreach ($tables as $name => $table) {
+  $schema = drupal_get_schema(); // schema_invoke_all();
+  $sql = '';
+    foreach ($schema as $name => $table) {
       if (substr($name, 0, 1) == '#') {
         continue;
       }
       if ($engine) {
         $stmts = call_user_func('schema_'.$engine.'_create_table_sql', $table);
       } else {
-        $stmts = schema_create_table_sql($table);
+        $stmts = db_create_table_sql($table);
       }
 
       $sql .= implode(";\n", $stmts).";\n\n";
     }
-  }
     
   $output = <<<EOT
 <p>This page shows the CREATE TABLE statements that the Schema module 

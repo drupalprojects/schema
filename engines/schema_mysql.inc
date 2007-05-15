@@ -47,7 +47,7 @@ function schema_mysql_schema_type_map() {
 
 function schema_mysql_create_table_sql($table) {
   $sql_cols = array();
-  foreach ($table['cols'] as $colname => $col) {
+  foreach ($table['fields'] as $colname => $col) {
     $sql = $colname.' '.schema_engine_type($col, 'mysql');
     if (isset($col['unsigned']) && $col['unsigned']) {
       $sql .= ' UNSIGNED';
@@ -84,14 +84,14 @@ function schema_mysql_create_table_sql($table) {
   }
 
   $sql_keys = array();
-  if (is_array($table['primary'])) {
-    $sql_keys[] = 'PRIMARY KEY ('.implode(', ', $table['primary']).')';
+  if (is_array($table['primary key'])) {
+    $sql_keys[] = 'PRIMARY KEY ('.implode(', ', $table['primary key']).')';
   }
-  foreach (array('unique', 'index') as $type) {
+  foreach (array('unique keys', 'indexes') as $type) {
     if (isset($table[$type]) && is_array($table[$type])) {
       foreach ($table[$type] as $keyname => $key) {
         $sql = '';
-        if ($type == 'unique') {
+        if ($type == 'unique keys') {
             $sql = 'UNIQUE ';
         }
         $sql .= 'KEY '.$keyname.' ';
@@ -134,18 +134,22 @@ function schema_mysql_inspect($name = NULL) {
     if (preg_match('@([a-z]+)(?:\((\d+)\))?\s*(unsigned)?@', $col['type'],
           $matches)) {
       list($col['type'], $col['size']) = schema_schema_type($matches[1], 'mysql');
-      if ($matches[2]) {
+      if (isset($matches[2])) {
         if ($numeric) {
           $col['disp-width'] = $matches[2];
         } else {
           $col['length'] = $matches[2];
         }
       }
-      if ($matches[3]) {
+      if (isset($matches[3])) {
         $col['unsigned'] = TRUE;
       }
     }
-    $col['not null'] = ($r['IS_NULLABLE'] == 'YES' ? 0 : 1);
+    if ($col['type'] == 'int' && isset($r['EXTRA']) && 
+      $r['EXTRA'] == 'auto_increment') {
+      $col['type'] = 'serial';
+    }
+    $col['not null'] = ($r['IS_NULLABLE'] == 'YES' ? FALSE : TRUE);
     if (! is_null($r['COLUMN_DEFAULT'])) {
       if ($numeric) {
         // XXX floats!
@@ -154,7 +158,7 @@ function schema_mysql_inspect($name = NULL) {
         $col['default'] = $r['COLUMN_DEFAULT'];
       }
     }
-    $tables[$r['TABLE_NAME']]['cols'][$r['COLUMN_NAME']] = $col;
+    $tables[$r['TABLE_NAME']]['fields'][$r['COLUMN_NAME']] = $col;
     $tables[$r['TABLE_NAME']]['name'] = $r['TABLE_NAME'];
   }
 
@@ -163,16 +167,21 @@ function schema_mysql_inspect($name = NULL) {
     'ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX',
     $database);
   while ($r = db_fetch_array($res)) {
-    if ($r['INDEX_NAME'] == 'PRIMARY') {
-      $type = 'primary';
-      $tables[$r['TABLE_NAME']][$type][] = $r['COLUMN_NAME'];
-      continue;
-    } else if ($r['NON-UNIQUE'] == 0) {
-      $type = 'unique';
+    if (isset($r['SUB_PART']) && !is_null($r['SUB_PART'])) {
+      $col = array($r['COLUMN_NAME'], intval($r['SUB_PART']));
     } else {
-      $type = 'index';
+      $col = $r['COLUMN_NAME'];
     }
-    $tables[$r['TABLE_NAME']][$type][$r['INDEX_NAME']][] = $r['COLUMN_NAME'];
+    if ($r['INDEX_NAME'] == 'PRIMARY') {
+      $type = 'primary key';
+      $tables[$r['TABLE_NAME']][$type][] = $col;
+      continue;
+    } else if ($r['NON_UNIQUE'] == 0) {
+      $type = 'unique keys';
+    } else {
+      $type = 'indexes';
+    }
+    $tables[$r['TABLE_NAME']][$type][$r['INDEX_NAME']][] = $col;
   }
 
   return $tables;
