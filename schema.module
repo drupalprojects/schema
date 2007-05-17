@@ -155,40 +155,6 @@ function schema_schema_type($type, $engine = NULL) {
   }
 }
 
-function schema_create_schema($schema) {
-  foreach ($schema as $name => $table) {
-    if (substr($name, 0, 1) == '#') {
-      continue;
-    }
-    schema_create_table($table);
-  }
-}
-
-function schema_drop_schema($schema) {
-  foreach ($schema as $name => $table) {
-    if (substr($name, 0, 1) == '#') {
-      continue;
-    }
-    schema_drop_table($table);
-  }
-}
-    
-function schema_create_table_sql($spec) {
-  return schema_invoke('create_table_sql', $spec);
-}
-
-function schema_create_table($spec) {
-  $stmts = schema_invoke('create_table_sql', $spec);
-  foreach ($stmts as $stmt) {
-    // XXX check status, record errors
-    db_query($stmt);
-  }
-}
-
-function schema_drop_table($spec) {
-  return db_query('DROP TABLE {'.$spec['name'].'}');
-}
-
 // schema_compare_schemas: Compare two complete schemas.  $ref is
 // considered the reference copy and $inspect is compared against
 // it.  If $inspect is NULL, a schema for the currently database is
@@ -238,6 +204,10 @@ EOT;
 //
 function schema_compare_table($ref, $inspect = NULL, &$reasons = array()) {
   global $db_type;
+  $_db_type = $db_type;
+  if ($_db_type == 'mysqli') {
+    $_db_type = 'mysql';
+  }
 
   if (! isset($inspect)) {
     $inspect = schema_invoke('inspect', $ref['name']);
@@ -269,8 +239,8 @@ function schema_compare_table($ref, $inspect = NULL, &$reasons = array()) {
     // If an engine-specific type is specified, use it.  XXX $inspect
     // will contain the schema type for the engine type, if one
     // exists, whereas dbtype_type contains the engine type.
-    if (isset($col[$db_type .'_type'])) {
-      $col['type'] = $col[$db_type .'_type'];
+    if (isset($col[$_db_type .'_type'])) {
+      $col['type'] = $col[$_db_type .'_type'];
     }
 
     $col = array_intersect_key($col, $col_keys);
@@ -306,7 +276,7 @@ function schema_compare_table($ref, $inspect = NULL, &$reasons = array()) {
 
   if (isset($ref['primary key'])) {
     if (! isset($inspect['primary key'])) {
-      $reasons[] = "primary: missing in database";
+      $reasons[] = "primary key: missing in database";
     }
     else if ($ref['primary key'] !== $inspect['primary key']) {
       $reasons[] = ("primary key:<br />declared: ".
@@ -315,7 +285,7 @@ function schema_compare_table($ref, $inspect = NULL, &$reasons = array()) {
     }
   } 
   else if (isset($inspect['primary key'])) {
-    $reasons[] = "primary: missing in schema";
+    $reasons[] = "primary key: missing in schema";
   }
 
   foreach (array('unique keys', 'indexes') as $type) {
