@@ -535,7 +535,7 @@ defines them; unknown tables are all grouped together.</p>
 
 <p>To implement hook_schema() for a module that has existing tables, copy 
 the schema structure for those tables directly into the module's 
-hook_schema() and return $schema.</p>
+hook_schema() and return \$schema.</p>
 EOT;
 
   $output .= drupal_render($form);
