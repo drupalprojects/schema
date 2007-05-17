@@ -61,17 +61,17 @@ function content_schema() {
   $fields = array();
 
   $schema['node_field'] = array(
-    'cols' => array(
+    'fields' => array(
       'field_name' => array('type' => 'varchar', 'length' => '32', 'not null' => 1, 'default' => ''),
       'type' => array('type' => 'varchar', 'length' => '127', 'not null' => 1, 'default' => ''),
       'global_settings' => array('type' => 'text', 'not null' => 1),
       'required' => array('type' => 'int', 'not null' => 1, 'default' => 0),
       'multiple' => array('type' => 'int', 'not null' => 1, 'default' => 0),
       'db_storage' => array('type' => 'int', 'not null' => 1, 'default' => 0)),
-    'primary' => array('field_name'),
+    'primary key' => array('field_name'),
     );
   $schema['node_field_instance'] = array(
-    'cols' => array(
+    'fields' => array(
       'field_name' => array('type' => 'varchar', 'length' => '32', 'not null' => 1, 'default' => ''),
       'type_name' => array('type' => 'varchar', 'length' => '32', 'not null' => 1, 'default' => ''),
       'weight' => array('type' => 'int', 'not null' => 1, 'default' => 0),
@@ -80,19 +80,19 @@ function content_schema() {
       'widget_settings' => array('type' => 'text', 'not null' => 1),
       'display_settings' => array('type' => 'text', 'not null' => 1),
       'description' => array('type' => 'text', 'not null' => 1)),
-    'primary' => array('field_name', 'type_name'),
+    'primary key' => array('field_name', 'type_name'),
     );
 
   // All CCK content type and field tables share these properties.
   $base = array(
-    'cols' => array(
+    'fields' => array(
       'vid' => array('type' => 'int', 'unsigned' => 1, 'not null' => 1,
         'default' => '0',
         'join' => array('system', 'node', 'vid'),
         'join-type' => 'one'),
       'nid' => array('type' => 'int', 'unsigned' => 1, 'not null' => 1,
         'default' => '0')),
-    'primary' => array('vid'),
+    'primary key' => array('vid'),
     );
 
   foreach ($info['fields'] as $f) {
@@ -100,10 +100,10 @@ function content_schema() {
       $name = 'content_'.$f['field_name'];
       $schema[$name] = $base;
       if ($f['multiple']) {
-        $schema[$name]['cols']['delta'] = array(
+        $schema[$name]['fields']['delta'] = array(
           'type' => 'int', 'unsigned' => 1, 'not null' => 1, 'default' => '0');
-        $schema[$name]['primary'][] = 'delta';
-        $schema[$name]['cols']['vid']['join-type'] = 'many';
+        $schema[$name]['primary key'][] = 'delta';
+        $schema[$name]['fields']['vid']['join-type'] = 'many';
       }
       
       _content_schema_add_field($schema, $name, $f);
@@ -112,7 +112,7 @@ function content_schema() {
 
   foreach ($info['content types'] as $t_name => $type) {
     $schema['content_type_'.$t_name] = $base;
-    $schema['content_type_'.$t_name]['cols']['vid']['node-types'][]=$t_name;
+    $schema['content_type_'.$t_name]['fields']['vid']['node-types'][]=$t_name;
     foreach ($type['fields'] as $f_name => $field) {
       if ($field['db_storage'] == CONTENT_DB_STORAGE_PER_CONTENT_TYPE) {
         _content_schema_add_field($schema, 'content_type_'.$t_name,
@@ -120,7 +120,7 @@ function content_schema() {
       } else {
         // The field does not add columns to this type's table but
         // does join to nodes of this type.
-        $schema['content_'.$f_name]['cols']['vid']['node-types'][]=$t_name;
+        $schema['content_'.$f_name]['fields']['vid']['node-types'][]=$t_name;
       }
     }
   }
@@ -162,6 +162,6 @@ function _content_schema_add_field(&$schema, $tblname, $f) {
       unset($sc_col['length']);
     }
 
-    $schema[$tblname]['cols'][$sc_colname] = $sc_col;
+    $schema[$tblname]['fields'][$sc_colname] = $sc_col;
   }
 }  

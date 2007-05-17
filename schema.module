@@ -13,11 +13,12 @@ global $schema_engines;
 function schema_phpprint($schema) {
   $out = '';
   foreach ($schema as $name => $table) {
-    if (substr($name, 0, 1) == '#') {
-      $out .= "\$schema['$name'] = '$table';\n";
-      continue;
-    }
-    
+    $out .= schema_phpprint_table($name, $table);
+  }
+  return $out;
+}
+
+function schema_phpprint_table($name, $table) {
     $cols = array();
     foreach ($table['fields'] as $colname => $col) {
       $cols[] = "'$colname' => ".schema_phpprint_column($col);
@@ -33,6 +34,7 @@ function schema_phpprint($schema) {
         $index[] = "'$keyname' => ".schema_phpprint_key($key);
       }
     }
+    $out = '';
     $out .= "\$schema['".$name."'] = array(\n    'fields' => array(\n         ";
     $out .= implode(",\n         ", $cols);
     $out .= "),\n";
@@ -50,9 +52,7 @@ function schema_phpprint($schema) {
       $out .= "),\n";
     }
     $out .= ");\n";
-  }
-
-  return $out;
+    return $out;
 }
 
 function schema_phpprint_column($col) {
@@ -165,32 +165,16 @@ function schema_compare_schemas($ref, $inspect = NULL) {
   }
   
   $info = array();
-    foreach ($ref as $name => $table) {
-      $module = $table['module'];
-      if ($name == '#inspect-engine') {
-        global $db_type;
-        if ($table != $db_type) {
-          $info['warn'][] = <<<EOT
-<p>The reference schema for the "$module" tables was generated against a $table
-database.  You are using a $db_type database and, currently, the schemas
-Drupal uses for these two engines are actually different and cannot be
-represented by a single reference schema.  The Mismatch section below shows
-the differences between the two schemas actually in use.
-EOT;
-        }
-      }
-      if (substr($name, 0, 1) == '#') {
-        continue;
-      }
-      // XXX
-      if (!isset($inspect[$name])) {
-        $info['xxx missing'][$module][$name] = array('status' => 'missing');
-      } else {
-        $status = schema_compare_table($table, $inspect[$name]);
-        $info[$status['status']][$module][$name] = $status;
-        unset($inspect[$name]);
-      }
+  foreach ($ref as $name => $table) {
+    $module = $table['module'];
+    if (!isset($inspect[$name])) {
+      $info['missing'][$module][$name] = array('status' => 'missing');
+    } else {
+      $status = schema_compare_table($table, $inspect[$name]);
+      $info[$status['status']][$module][$name] = $status;
+      unset($inspect[$name]);
     }
+  }
 
   foreach ($inspect as $name => $table) {
     $info['extra'][] = $name;
@@ -228,7 +212,8 @@ function schema_compare_table($ref, $inspect = NULL, &$reasons = array()) {
     // reference we are comparing against can have a specific type.
     // We therefore run the reference's specific type through the
     // type conversion cycle to get its common type for comparison.
-    // XXX hack
+    //
+    // Sadly, we need a special-case hack for 'serial'.
     $serial = ($col['type'] == 'serial' ? TRUE : FALSE);
     $dbtype = schema_engine_type($col);
     list($col['type'], $col['size']) = schema_schema_type($dbtype);
@@ -317,175 +302,6 @@ function schema_compare_table($ref, $inspect = NULL, &$reasons = array()) {
     'notes' => $notes);
 }
 
-// Collect the results of all modules that implement hook_schema.  The
-// data structures do not quite lend themselves to the way
-// module_invoke_all() treats them.
-function schema_invoke_all() {
-
-  // XXX This should be cached when generated but the cache will need
-  // to be cleared every time a schema changes (when modules are
-  // enabled or disabled, when updates occur, or when a CCK type
-  // structure changes).  Until schema_clear_cache() calls are put
-  // into the right places, just generate the schema from scratch
-  // every time.
-
-  $schema = array();
-  foreach (module_implements('schema') as $module) {
-    $function = $module.'_schema';
-    $mod_schema = $function();
-    if (is_array($mod_schema)) {
-      $schema[$module] = $mod_schema;
-      foreach ($schema[$module] as $name => $table) {
-        if (substr($name, 0, 1) == '#') {
-          continue;
-        }
-        $schema[$module][$name]['name'] = $name;
-      }
-    }
-  }
-
-  // XXX Drupal 5's primary key for node is (nid,vid) but I
-  // (currently) think that is a mistake.
-  $schema['system']['node']['primary key'] = array('nid');
-
-  // Compute and store inverted join information so each table knows
-  // which other tables join to it.
-  foreach ($schema as $module => $tables) {
-    foreach ($tables as $t_name => $table) {
-      if (substr($t_name, 0, 1) == '#') {
-        continue;
-      }
-      foreach ($table['fields'] as $c_name => $col) {
-        if (isset($col['join'])) {
-          list($to_mod, $to_tab, $to_col) = $col['join'];
-          $schema[$to_mod][$to_tab]['join-from'][] = array(
-            $to_col, $module, $t_name, $c_name, $col['join-type']);
-        }
-      }
-    }
-  }
-
-  // Generate the SQL query for each table.
-  foreach ($schema as $module => $tables) {
-    foreach ($tables as $t_name => $table) {
-      if (substr($t_name, 0, 1) == '#') {
-        continue;
-      }
-      _schema_generate_table($schema, $module, $t_name);
-    }
-  }
-
-  if (module_exists('node')) {
-    $node_types = node_get_types();
-    foreach ($node_types as $type) {
-      _schema_generate_table($schema, 'system', 'node', $type->type);
-    }
-  }
-
-  return $schema;
-}
-
-// Generate the SELECT query and associated data to retrieve a
-// complete entity from $module's table $t_name.
-//
-// If $o_type is provided (e.g. "story" if $module is "node")
-// eliminate joins to tables that specify which $module types they
-// join to and do not include $o_type in the list.  This eliminates
-// joins that will never produce any results.  It is currently only
-// used for node.
-function _schema_generate_table(&$schema, $module, $t_name, $o_type = NULL) {
-  return; // XXX
-
-  $table = $schema[$module][$t_name];
-
-  // We can't build a WHERE clause for a table without a primary key.
-  if (!isset($table['primary key'])) {
-    return;
-  }
-  // SELECT each column individually from the primary table so
-  // we can access it by name.
-  foreach ($table['fields'] as $c_name => $col) {
-    $sel_as = "${t_name}_${c_name}";
-    $selcols[$t_name][] = $sel_as;
-    $sels[] = "$t_name.$c_name as $sel_as";
-  }
-  foreach ($table['primary key'] as $pcol) {
-    $primarys[$t_name][] = "${t_name}_${pcol}";
-    switch ($table['fields'][$pcol]['type']) {
-      case 'int': 
-      case 'mediumint':
-      case 'tinyint':
-      case 'bigint':
-      case 'float':
-        $wheres[] = "${t_name}.${pcol}=%d";
-        break;
-      default:
-        $wheres[] = "${t_name}.{$pcol}='%s'";
-        break;
-    }
-  }
-
-  $joins = array();
-  if (!isset($schema[$module][$t_name]['join-from'])) {
-    $schema[$module][$t_name]['join-from'] = array();
-  }
-
-  $join_many = 0;
-  foreach ($schema[$module][$t_name]['join-from'] as $join) {
-    list($my_col, $to_mod, $to_tab, $to_col, $join_type) = $join;
-    $table = $schema[$to_mod][$to_tab];
-
-    if (isset($o_type) && is_array($table['fields'][$to_col][$t_name.'-types'])&&
-      array_search($o_type, $table['fields'][$to_col][$t_name.'-types'])
-      === FALSE) {
-      continue;
-    }
-    
-    // SELECT each column individually from the joined table so
-    // we can access it by name.
-    foreach ($table['fields'] as $c_name => $col) {
-      $sel_as = "${to_tab}_${c_name}";
-      $selcols[$to_tab][] = $sel_as;
-      $sels[] = "$to_tab.$c_name as $sel_as";
-    }
-
-    if (isset($table['primary key'])) {
-      foreach ($table['primary key'] as $pcol) {
-        $primarys[$to_tab][] = "${to_tab}_${pcol}";
-      }
-    } else {
-      drupal_set_message("Schema: join to $t_name requires a primary key", 'error');
-      break;
-    }
-
-    // LEFT JOIN to each table.  We need to use LEFT JOIN
-    // because only a subset of the tables will have any data
-    // for this node.
-    $joins[] ="LEFT JOIN {$to_tab} $to_tab ON $t_name.$my_col=$to_tab.$to_col";
-    $jointypes[$to_tab] = $join_type;
-    if ($join_type == 'many') {
-      $join_many++;
-    }
-  }
-
-  // Execute our rather large assembled query.  Not just for Views anymore!
-  $sql = ('SELECT '.implode(",\n\t", $sels)."\nFROM {$t_name} $t_name\n".
-	  implode("\n\t", $joins)."\nWHERE ".
-	  implode(' AND ', $wheres));
-  //dpm($sql);
-
-  if (isset($o_type)) {
-    $schema[$module][$t_name]['query-'.$o_type] = $sql;
-    $schema[$module][$t_name]['selcols-'.$o_type] = $selcols;
-    $schema[$module][$t_name]['primarys-'.$o_type] = $primarys;
-  } else {
-    $schema[$module][$t_name]['query'] = $sql;
-    $schema[$module][$t_name]['selcols'] = $selcols;
-    $schema[$module][$t_name]['primarys'] = $primarys;
-  }
-  $schema[$module][$t_name]['jointypes'] = $jointypes;
-}
-
 //////////////////////////////////////////////////////////////////////
 // Schema administration and UI
 //////////////////////////////////////////////////////////////////////
@@ -570,8 +386,9 @@ function schema_menu() {
     'page callback' => 'schema_sql',
     );
 
+  // This can't work unless we rename the functions in database.*.inc.
   global $db_type, $schema_engines;
-  if (isset($schema_engines) && is_array($schema_engines)) {
+  if (FALSE && isset($schema_engines) && is_array($schema_engines)) {
     foreach ($schema_engines as $engine) {
       $items['admin/build/schema/sql/'.$engine] = array(
         'title' => t($engine),
@@ -609,8 +426,8 @@ function schema_report() {
     'extra' => 'Tables in the database that are not present in the schema.  This probably indicates modules that do not use the Schema API.',
     );
 
-  $generate = drupal_get_schema();
-  $info = schema_compare_schemas($generate);
+  $schema = drupal_get_schema();
+  $info = schema_compare_schemas($schema);
 
   foreach ($info as $state => $modules) {
     $counts[$state] = 0;
@@ -692,19 +509,36 @@ EOT;
 }
 
 function schema_inspect() {
+  $schema = drupal_get_schema();
   $inspect = schema_invoke('inspect');
-  $pp = schema_phpprint($inspect);
+  foreach ($inspect as $name => $table) {
+    $module = isset($schema[$name]) ? $schema[$name]['module'] : 'Unknown';
+    if (!isset($form[$module])) {
+      $form[$module] = array(
+        '#type' => 'fieldset',
+        '#access' => TRUE,
+        '#title' => check_plain($module),
+        '#collapsible' => TRUE,
+        '#collapsed' => ($module != 'Unknown'),
+        '#weight' => ($module == 'Unknown' ? 0 : 1),
+        '#value' => '');
+    }
+    $form[$module][$name] = array(
+      '#type' => 'markup',
+      '#value' => '<textarea style="width:100%" rows="10">'.check_plain(schema_phpprint_table($name, $table)).'</textarea>');
+  }
+
   $output = <<<EOT
 <p>This page shows the live database schema as it currently
-exists on this system.  The data structure is generated dynamically
-and includes all tables.  No relationship
-information (such as which tables belong to which modules or how the
-tables JOIN together) is displayed
-because that information is not represented in the database itself.
-This page is primarily useful for creating a hook_schema() function
-for modules that do not yet have one.</p>
-<textarea style="width:100%" rows="30">$pp</textarea>
+exists on this system.  Known tables are grouped by the module that 
+defines them; unknown tables are all grouped together.</p>
+
+<p>To implement hook_schema() for a module that has existing tables, copy 
+the schema structure for those tables directly into the module's 
+hook_schema() and return $schema.</p>
 EOT;
+
+  $output .= drupal_render($form);
 
   return $output;
 }
@@ -736,7 +570,7 @@ EOT;
 }
 
 function schema_show() {
-  $schema = schema_invoke_all();
+  $schema = drupal_get_schema();
   $show = print_r($schema,1);
     
   $output = <<<EOT
@@ -747,8 +581,133 @@ EOT;
 }
 
 //////////////////////////////////////////////////////////////////////
-// Schema node stuff
+// Schema query stuff.  EXPERIMENTAL, do not try to use this yet.
 //////////////////////////////////////////////////////////////////////
+
+function schema_schema_alter(&$schema) {
+  // Compute and store inverted join information so each table knows
+  // which other tables join to it.
+  foreach ($schema as $t_name => $table) {
+      $module = $table['module'];
+      foreach ($table['fields'] as $c_name => $col) {
+        if (isset($col['join'])) {
+          list($to_mod, $to_tab, $to_col) = $col['join'];
+          $schema[$to_mod][$to_tab]['join-from'][] = array(
+            $to_col, $module, $t_name, $c_name, $col['join-type']);
+        }
+      }
+  }
+
+  // Generate the SQL query for each table.
+  foreach ($schema as $t_name => $table) {
+      _schema_generate_table($schema, $t_name);
+  }
+
+  if (module_exists('node')) {
+    $node_types = node_get_types();
+    foreach ($node_types as $type) {
+      _schema_generate_table($schema, 'node', $type->type);
+    }
+  }
+}
+
+// Generate the SELECT query and associated data to retrieve a
+// complete entity from $module's table $t_name.
+//
+// If $o_type is provided (e.g. "story" if $module is "node")
+// eliminate joins to tables that specify which $module types they
+// join to and do not include $o_type in the list.  This eliminates
+// joins that will never produce any results.  It is currently only
+// used for node.
+function _schema_generate_table(&$schema, $t_name, $o_type = NULL) {
+  $table = $schema[$t_name];
+
+  // We can't build a WHERE clause for a table without a primary key.
+  if (!isset($table['primary key'])) {
+    return;
+  }
+  // SELECT each column individually from the primary table so
+  // we can access it by name.
+  foreach ($table['fields'] as $c_name => $col) {
+    $sel_as = "${t_name}_${c_name}";
+    $selcols[$t_name][] = $sel_as;
+    $sels[] = "$t_name.$c_name as $sel_as";
+  }
+  foreach ($table['primary key'] as $pcol) {
+    $primarys[$t_name][] = "${t_name}_${pcol}";
+    switch ($table['fields'][$pcol]['type']) {
+      case 'int': 
+      case 'float':
+        $wheres[] = "${t_name}.${pcol}=%d";
+        break;
+      default:
+        $wheres[] = "${t_name}.{$pcol}='%s'";
+        break;
+    }
+  }
+
+  $joins = array();
+  if (!isset($schema[$t_name]['join-from'])) {
+    $schema[$t_name]['join-from'] = array();
+  }
+
+  $join_many = 0;
+  foreach ($schema[$t_name]['join-from'] as $join) {
+    list($my_col, $to_mod, $to_tab, $to_col, $join_type) = $join;
+    $table = $schema[$to_mod][$to_tab];
+
+    if (isset($o_type) && is_array($table['fields'][$to_col][$t_name.'-types'])&&
+      array_search($o_type, $table['fields'][$to_col][$t_name.'-types'])
+      === FALSE) {
+      continue;
+    }
+    
+    // SELECT each column individually from the joined table so
+    // we can access it by name.
+    foreach ($table['fields'] as $c_name => $col) {
+      $sel_as = "${to_tab}_${c_name}";
+      $selcols[$to_tab][] = $sel_as;
+      $sels[] = "$to_tab.$c_name as $sel_as";
+    }
+
+    if (isset($table['primary key'])) {
+      foreach ($table['primary key'] as $pcol) {
+        $primarys[$to_tab][] = "${to_tab}_${pcol}";
+      }
+    } else {
+      drupal_set_message("Schema: join to $t_name requires a primary key", 'error');
+      break;
+    }
+
+    // LEFT JOIN to each table.  We need to use LEFT JOIN
+    // because only a subset of the tables will have any data
+    // for this node.
+    $joins[] ="LEFT JOIN {$to_tab} $to_tab ON $t_name.$my_col=$to_tab.$to_col";
+    $jointypes[$to_tab] = $join_type;
+    if ($join_type == 'many') {
+      $join_many++;
+    }
+  }
+
+  // Execute our rather large assembled query.  Not just for Views anymore!
+  $sql = ('SELECT '.implode(",\n\t", $sels)."\nFROM {$t_name} $t_name\n".
+	  implode("\n\t", $joins)."\nWHERE ".
+	  implode(' AND ', $wheres));
+  //dpm($sql);
+
+  if (isset($o_type)) {
+    $schema[$t_name]['query-'.$o_type] = $sql;
+    $schema[$t_name]['selcols-'.$o_type] = $selcols;
+    $schema[$t_name]['primarys-'.$o_type] = $primarys;
+  } else {
+    $schema[$t_name]['query'] = $sql;
+    $schema[$t_name]['selcols'] = $selcols;
+    $schema[$t_name]['primarys'] = $primarys;
+  }
+  if (isset($jointypes)) {
+    $schema[$t_name]['jointypes'] = $jointypes;
+  }
+}
 
 function schema_nodeapi(&$node, $op, $a3, $a4) {
   switch ($op) {
