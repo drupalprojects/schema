@@ -3,13 +3,15 @@
 
 global $schema_engines;
 
+//////////////////////////////////////////////////////////////////////
 // schema_phpprint: Return a pretty ASCII-formatted version of a
 // $schema array.  This is nothing more than a specialized variation
 // of var_dump and similar functions and is used only as a convenience
 // to generate the PHP for existing database tables (to bootstrap
 // support for modules that previously used CREATE TABLE explicitly)
 // and for debugging.
-//
+//////////////////////////////////////////////////////////////////////
+
 function schema_phpprint($schema) {
   $out = '';
   foreach ($schema as $name => $table) {
@@ -93,19 +95,7 @@ function schema_phpprint_key($keys) {
 }
 
 //////////////////////////////////////////////////////////////////////
-// Schema API functions
-//
-// To do:
-// 
-// schema_add_column
-// schema_remove_column
-// schema_add_index
-// schema_remove_index
-// schema_sync_column: Alters a column to match the provided spec,
-//   re-creating any indexes if necessary (since dropping a column
-//   drops its indexes).
-// schema_sync_table: Same as above for all columns and indexes.
-// 
+// Schema comparison functions
 //////////////////////////////////////////////////////////////////////
 
 function schema_invoke($op) {
@@ -165,6 +155,69 @@ function schema_compare_schemas($ref, $inspect = NULL) {
   }
   
   $info = array();
+
+  // Error check: all db_next_id() sequences must be type 'serial'
+  $res = db_query('SELECT name FROM {sequences}');
+  while ($r = db_fetch_array($res)) {
+    if (preg_match('@^(\w+)_(\w+)@', $r['name'], $m) !== FALSE) {
+      list($all, $table, $field) = $m;
+      if (!isset($ref[$table]) || !isset($ref[$table]['fields'][$field])
+        || $ref[$table]['fields'][$field]['type'] != 'serial') {
+        $info['warn'][] = t('%table.%column treated as sequence but is of type %type, not \'serial\'', array('%table' => $table, '%column' => $field, '%type' => $ref[$table]['fields'][$field]['type']));
+      }
+    } else {
+      $info['warn'][] = t('Sequence %sequence does not exist in the schema.', array('%sequence' => $name));
+    }
+  }
+
+  // Error check: column type and default type must match
+  foreach ($ref as $t_name => $table) {
+    foreach ($table['fields'] as $c_name => $col) {
+      switch ($col['type']) {
+        case 'int':
+        case 'float':
+        case 'numeric':
+          if (isset($col['default']) &&
+            (! is_numeric($col['default']) || is_string($col['default']))) {
+            $info['warn'][] = t('%table.%column is type %type but its default %default is PHP type %phptype', array('%table' => $t_name, '%column' => $c_name, '%type' => $col['type'], '%default' => $col['default'], '%phptype' => gettype($col['default'])));
+          }
+          break;
+
+        default:
+          if (isset($col['default']) && !is_string($col['default'])) {
+            $info['warn'][] = t('%table.%column is type %type but its default %default is PHP type %phptype', array('%table' => $t_name, '%column' => $c_name, '%type' => $col['type'], '%default' => $col['default'], '%phptype' => gettype($col['default'])));
+          }
+          break;
+      }
+    }
+  }
+
+  // Error check: 'text' and 'blob' columns cannot have a default value
+  foreach ($ref as $t_name => $table) {
+    foreach ($table['fields'] as $c_name => $col) {
+      switch ($col['type']) {
+        case 'text':
+        case 'blob':
+          if (isset($col['default'])) {
+            $info['warn'][] = t('%table.%column is type %type and may not have a default value', array('%table' => $t_name, '%column' => $c_name, '%type' => $col['type']));
+          }
+          break;
+      }
+    }
+  }
+
+  // Error check: primary keys must be 'not null'
+  foreach ($ref as $t_name => $table) {
+    if (isset($table['primary key'])) {
+      $keys = db_field_names($table['primary key']);
+      foreach ($keys as $key) {
+        if (!isset($table['fields'][$key]['not null']) || $table['fields'][$key]['not null'] !== TRUE) {
+          $info['warn'][] = t('%table.%column is part of the primary key but is not specified to be \'not null\'.', array('%table' => $t_name, '%column' => $key));
+        }
+      }
+    }
+  }
+  
   foreach ($ref as $name => $table) {
     $module = $table['module'];
     if (!isset($inspect[$name])) {
@@ -186,7 +239,7 @@ function schema_compare_schemas($ref, $inspect = NULL) {
 // one returned by a module's hook_schema) to an inspected specification from
 // the database.  If $inspect is not provided, the database is inspected.
 //
-function schema_compare_table($ref, $inspect = NULL, &$reasons = array()) {
+function schema_compare_table($ref, $inspect = NULL) {
   global $db_type;
   $_db_type = $db_type;
   if ($_db_type == 'mysqli') {
@@ -247,9 +300,15 @@ function schema_compare_table($ref, $inspect = NULL, &$reasons = array()) {
     if (count($colcmp2) != 0) {
       foreach ($colcmp2 as $key => $val) {
         if (isset($col_keys[$key]) && !isset($colcmp1[$key])) {
-          $reasons[] = ("column $colname:<br/>declared: ".
-            schema_phpprint_column($col).'<br/>actual: '.
-            schema_phpprint_column($inspect['fields'][$colname]));
+          if (!isset($col['key']) && isset($inspect['fields'][$colname]) &&
+              $inspect['fields'][$colname][$key] === FALSE) {
+            $notes[] = "column $colname: key '$key' not set, ignoring inspected default value";
+          } 
+          else {
+            $reasons[] = ("column $colname:<br/>declared: ".
+              schema_phpprint_column($col).'<br/>actual: '.
+              schema_phpprint_column($inspect['fields'][$colname]));
+          }
         }
       }
     }
@@ -423,7 +482,7 @@ function schema_report() {
     'same' => 'Tables for which the schema and database agree.',
     'different' => 'Tables for which the schema and database are different.',
     'missing' => 'Tables in the schema that are not present in the database.',
-    'extra' => 'Tables in the database that are not present in the schema.  This probably indicates modules that do not use the Schema API.',
+    'extra' => 'Tables in the database that are not present in the schema.  This indicates previously installed modules that are disabled but not un-installed or modules that do not use the Schema API.',
     );
 
   $schema = drupal_get_schema();
@@ -553,7 +612,7 @@ function schema_sql($engine = NULL) {
       if ($engine) {
         $stmts = call_user_func('schema_'.$engine.'_create_table_sql', $table);
       } else {
-        $stmts = db_create_table_sql($table);
+        $stmts = db_create_table_sql($name, $table);
       }
 
       $sql .= implode(";\n", $stmts).";\n\n";
@@ -584,7 +643,7 @@ EOT;
 // Schema query stuff.  EXPERIMENTAL, do not try to use this yet.
 //////////////////////////////////////////////////////////////////////
 
-function schema_schema_alter(&$schema) {
+function x_schema_schema_alter(&$schema) {
   // Compute and store inverted join information so each table knows
   // which other tables join to it.
   foreach ($schema as $t_name => $table) {
@@ -710,6 +769,8 @@ function _schema_generate_table(&$schema, $t_name, $o_type = NULL) {
 }
 
 function schema_nodeapi(&$node, $op, $a3, $a4) {
+  return;
+
   switch ($op) {
     case 'load':
       if (! isset($node->schema_data)) {

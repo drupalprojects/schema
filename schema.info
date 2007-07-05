@@ -1,5 +1,6 @@
 ; $Id$
 name = Schema
-description = The Schema module provides Drupal with a database schema abstraction API.
+description = The Schema module provides functionality built on the Schema API.
 package = Database
+core = 6.x
 
