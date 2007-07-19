@@ -211,7 +211,7 @@ function schema_compare_schemas($ref, $inspect = NULL) {
     if (isset($table['primary key'])) {
       $keys = db_field_names($table['primary key']);
       foreach ($keys as $key) {
-        if (!isset($table['fields'][$key]['not null']) || $table['fields'][$key]['not null'] !== TRUE) {
+        if (!isset($table['fields'][$key]['not null']) || $table['fields'][$key]['not null'] != TRUE) {
           $info['warn'][] = t('%table.%column is part of the primary key but is not specified to be \'not null\'.', array('%table' => $t_name, '%column' => $key));
         }
       }
@@ -421,17 +421,23 @@ function schema_menu() {
   $items['admin/build/schema'] = array(
     'title' => 'Schema',
     'description' => 'Manage the database schema for this system.',
-    'page callback' => 'schema_report',
+    'page callback' => 'schema_describe',
     'access arguments' => array('administer schema'),
+    );
+
+  $items['admin/build/schema/describe'] = array(
+    'title' => 'Describe',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'page callback' => 'schema_describe',
+    'weight' => -10,
     );
 
   $items['admin/build/schema/report'] = array(
     'title' => 'Compare',
-    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'type' => MENU_LOCAL_TASK,
     'page callback' => 'schema_report',
-    'weight' => -10,
+    'weight' => -8,
     );
-
 
   $items['admin/build/schema/inspect'] = array(
     'title' => 'Inspect',
@@ -467,6 +473,58 @@ function schema_menu() {
     );
 
   return $items;
+}
+
+function _schema_process_description($desc) {
+  return preg_replace('@{([a-z_]+)}@i', '<a href="#" onclick="Drupal.toggleFieldset($(\'#table-$1\')[0]); return false;">$1</a>', $desc);
+}
+
+function schema_describe() {
+  $schema = drupal_get_schema();
+  ksort($schema);
+  $row_hdrs = array(t('Name'), t('Type[:Size]'), t('Null?'), t('Default'));
+
+  $output = <<<EOT
+<p>This page describes the Drupal database schema.  Click on a table name 
+to see that table's description and fields.  Table names within a table or 
+field description are hyperlinks to that table's description.</p>
+EOT;
+
+  foreach ($schema as $t_name => $t_spec) {
+    $rows = array();
+    foreach ($t_spec['fields'] as $c_name => $c_spec) {
+      $row = array();
+      $row[] = $c_name;
+      $type = $c_spec['type'];
+      if (!empty($c_spec['size']) && $c_spec['size'] != 'normal') {
+        $type .= ':'.$c_spec['size'];
+      }
+      if ($c_spec['type'] == 'int' && !empty($c_spec['unsigned'])) {
+        $type .= ', unsigned';
+      }
+      $row[] = $type;
+      $row[] = !empty($c_spec['not null']) ? 'NO' : 'YES';
+      $row[] = isset($c_spec['default']) ? (is_string($c_spec['default']) ? '\''. $c_spec['default']. '\'' : $c_spec['default']) : '';
+      $rows[] = $row;
+      if (!empty($c_spec['description'])) {
+        $desc = _schema_process_description($c_spec['description']);
+        $rows[] = array(array('colspan' => count($row_hdrs), 'data' => $desc));
+      }
+    }
+
+    $form = array();
+    $form[$t_name] = array(
+      '#type' => 'fieldset', 
+      '#title' => $t_name,
+      '#description' => !empty($t_spec['description']) ? _schema_process_description($t_spec['description']) : '',
+      '#collapsible' => TRUE,
+      '#collapsed' => TRUE,
+      '#attributes' => array('id' => 'table-'.$t_name));
+    $form[$t_name]['content'] = array('#value' => theme('table', $row_hdrs, $rows));
+    $output .= drupal_render($form);
+  }
+
+  return $output;
 }
 
 // This function just massages the data returned by
