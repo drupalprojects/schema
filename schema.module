@@ -156,19 +156,9 @@ function schema_compare_schemas($ref, $inspect = NULL) {
   
   $info = array();
 
-  // Error check: all db_next_id() sequences must be type 'serial'
-  $res = db_query('SELECT name FROM {sequences}');
-  while ($r = db_fetch_array($res)) {
-    if (preg_match('@^(\w+)_(\w+)@', $r['name'], $m) !== FALSE) {
-      list($all, $table, $field) = $m;
-      if (!isset($ref[$table]) || !isset($ref[$table]['fields'][$field])
-        || $ref[$table]['fields'][$field]['type'] != 'serial') {
-        $info['warn'][] = t('%table.%column treated as sequence but is of type %type, not \'serial\'', array('%table' => $table, '%column' => $field, '%type' => $ref[$table]['fields'][$field]['type']));
-      }
-    } else {
-      $info['warn'][] = t('Sequence %sequence does not exist in the schema.', array('%sequence' => $name));
-    }
-  }
+  // Error checks to consider adding:
+  // All type serial columns must be in an index or key.
+  // All columns in a primary or unique key must be NOT NULL.
 
   // Error check: column type and default type must match
   foreach ($ref as $t_name => $table) {
@@ -421,21 +411,21 @@ function schema_menu() {
   $items['admin/build/schema'] = array(
     'title' => 'Schema',
     'description' => 'Manage the database schema for this system.',
-    'page callback' => 'schema_describe',
+    'page callback' => 'schema_report',
     'access arguments' => array('administer schema'),
-    );
-
-  $items['admin/build/schema/describe'] = array(
-    'title' => 'Describe',
-    'type' => MENU_DEFAULT_LOCAL_TASK,
-    'page callback' => 'schema_describe',
-    'weight' => -10,
     );
 
   $items['admin/build/schema/report'] = array(
     'title' => 'Compare',
-    'type' => MENU_LOCAL_TASK,
+    'type' => MENU_DEFAULT_LOCAL_TASK,
     'page callback' => 'schema_report',
+    'weight' => -10,
+    );
+
+  $items['admin/build/schema/describe'] = array(
+    'title' => 'Describe',
+    'type' => MENU_LOCAL_TASK,
+    'page callback' => 'schema_describe',
     'weight' => -8,
     );
 
@@ -496,6 +486,9 @@ EOT;
       $row = array();
       $row[] = $c_name;
       $type = $c_spec['type'];
+      if (!empty($c_spec['length'])) {
+        $type .= '('. $c_spec['length'] .')';
+      }
       if (!empty($c_spec['size']) && $c_spec['size'] != 'normal') {
         $type .= ':'.$c_spec['size'];
       }
@@ -531,10 +524,10 @@ EOT;
 // schema_compare_schemas() into HTML.
 function schema_report() {
   $states = array(
-    'same' => ('Match'),
-    'different' => ('Mismatch'),
-    'missing' => ('Missing'),
-    'extra' => ('Extra'),
+    'same' => t('Match'),
+    'different' => t('Mismatch'),
+    'missing' => t('Missing'),
+    'extra' => t('Extra'),
     );
   $descs = array(
     'same' => 'Tables for which the schema and database agree.',
