@@ -470,7 +470,7 @@ function _schema_process_description($desc) {
 }
 
 function schema_describe() {
-  $schema = drupal_get_schema();
+  $schema = drupal_get_schema(NULL, TRUE);
   ksort($schema);
   $row_hdrs = array(t('Name'), t('Type[:Size]'), t('Null?'), t('Default'));
 
@@ -502,7 +502,13 @@ EOT;
       if (!empty($c_spec['description'])) {
         $desc = _schema_process_description($c_spec['description']);
         $rows[] = array(array('colspan' => count($row_hdrs), 'data' => $desc));
+      } else {
+        drupal_set_message(_schema_process_description(t('Field {!table}.@field has no description.', array('!table' => $t_name, '@field' => $c_name))), 'error');
       }
+    }
+
+    if (empty($t_spec['description'])) {
+      drupal_set_message(_schema_process_description(t('Table {!table} has no description.', array('!table' => $t_name))), 'error');
     }
 
     $form = array();
@@ -536,7 +542,7 @@ function schema_report() {
     'extra' => 'Tables in the database that are not present in the schema.  This indicates previously installed modules that are disabled but not un-installed or modules that do not use the Schema API.',
     );
 
-  $schema = drupal_get_schema();
+  $schema = drupal_get_schema(NULL, TRUE);
   $info = schema_compare_schemas($schema);
 
   foreach ($info as $state => $modules) {
@@ -619,7 +625,10 @@ EOT;
 }
 
 function schema_inspect() {
-  $schema = drupal_get_schema();
+  $mods = module_list();
+  sort($mods);
+  $mods = array_flip($mods);
+  $schema = drupal_get_schema(NULL, TRUE);
   $inspect = schema_invoke('inspect');
   foreach ($inspect as $name => $table) {
     $module = isset($schema[$name]) ? $schema[$name]['module'] : 'Unknown';
@@ -630,7 +639,7 @@ function schema_inspect() {
         '#title' => check_plain($module),
         '#collapsible' => TRUE,
         '#collapsed' => ($module != 'Unknown'),
-        '#weight' => ($module == 'Unknown' ? 0 : 1),
+        '#weight' => ($module == 'Unknown' ? 0 : $mods[$module]+1),
         '#value' => '');
     }
     $form[$module][$name] = array(
@@ -654,7 +663,7 @@ EOT;
 }
 
 function schema_sql($engine = NULL) {
-  $schema = drupal_get_schema(); // schema_invoke_all();
+  $schema = drupal_get_schema(NULL, TRUE);
   $sql = '';
     foreach ($schema as $name => $table) {
       if (substr($name, 0, 1) == '#') {
@@ -680,7 +689,7 @@ EOT;
 }
 
 function schema_show() {
-  $schema = drupal_get_schema();
+  $schema = drupal_get_schema(NULL, TRUE);
   $show = print_r($schema,1);
     
   $output = <<<EOT
