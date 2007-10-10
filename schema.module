@@ -693,6 +693,9 @@ function schema_show() {
   $show = print_r($schema,1);
     
   $output = <<<EOT
+<p>This page displays the Drupal database schema data structure.  It is for
+debugging purposes.</p>
+
 <textarea style="width:100%" rows="30">$show</textarea>
 EOT;
 
