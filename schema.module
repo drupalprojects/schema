@@ -363,9 +363,12 @@ function schema_require() {
   static $done = 0;
   if ($done++) { return; }
 
+  $path = drupal_get_path('module', 'schema');
+
+  require_once("$path/schema_util.inc");
+
   // Load all our module 'on behalfs' so they will be available for
   // any module (including this one) that needs them.
-  $path = drupal_get_path('module', 'schema');
   $files = drupal_system_listing('schema_.*\.inc$', $path.'/modules','name',0);
   foreach($files as $file) {
     // The filename format is very specific. It must be schema_MODULENAME.inc
