@@ -116,7 +116,7 @@ function schema_mysql_inspect($name = NULL) {
   global $db_url;
 
   $tables = array();
-  $url = parse_url($db_url);
+  $url = parse_url(is_array($db_url) ? $db_url['default'] : $db_url);
   $database = substr($url['path'], 1);
 
   $sql = ('SELECT * FROM information_schema.COLUMNS '.

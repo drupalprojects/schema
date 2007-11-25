@@ -19,7 +19,7 @@ function schema_pgsql_inspect($tbl_name = NULL) {
   global $db_url;
 
   $tables = array();
-  $url = parse_url($db_url);
+  $url = parse_url(is_array($db_url) ? $db_url['default'] : $db_url);
   $database = substr($url['path'], 1);
 
   //
