@@ -118,28 +118,29 @@ function schema_engine_invoke($engine, $op) {
 }
 
 // Convert a column's Schema type into an engine-specific data type.
-function schema_engine_type($col, $engine = NULL) {
+function schema_engine_type($col, $table, $field, $engine = NULL) {
   $map = schema_engine_invoke($engine, 'engine_type_map');
   $size = (isset($col['size']) ? $col['size'] : 'normal');
   $type = $col['type'].':'.$size;
   if (isset($map[$type])) {
     return $map[$type];
   } else {
-    drupal_set_message(t('No %engine type for Schema type %type.',
-                         array('%engine' => $engine, '%type' => $type)),
+    drupal_set_message(t('%table.%field: no %engine type for Schema type %type.',
+                         array('%engine' => $engine, '%type' => $type, '%table' => $table, '%field' => $field)),
       'error');
     return $col['type'];
   }
 }
 
 // Convert an engine-specific data type into a Schema type.
-function schema_schema_type($type, $engine = NULL) {
+function schema_schema_type($type, $table, $field, $engine = NULL) {
   $map = schema_engine_invoke($engine, 'schema_type_map');
+  $type = strtolower($type);
   if (isset($map[$type])) {
     return explode(':', $map[$type]);
   } else {
-    drupal_set_message(t('No Schema type for %engine type %type.',
-                         array('%engine' => $engine, '%type' => $type)),
+    drupal_set_message(t('Field %table.%field: no Schema type for %engine type %type.',
+                         array('%engine' => $engine, '%type' => $type, '%table' => $table, '%field' => $field)),
       'error');
     return array($type, 'normal');
   }
@@ -258,8 +259,8 @@ function schema_compare_table($ref, $inspect = NULL) {
     //
     // Sadly, we need a special-case hack for 'serial'.
     $serial = ($col['type'] == 'serial' ? TRUE : FALSE);
-    $dbtype = schema_engine_type($col);
-    list($col['type'], $col['size']) = schema_schema_type($dbtype);
+    $dbtype = schema_engine_type($col, $ref['name'], $colname);
+    list($col['type'], $col['size']) = schema_schema_type($dbtype, $ref['name'], $colname);
     if ($serial) {
       $col['type'] = 'serial';
     }

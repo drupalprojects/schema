@@ -51,8 +51,7 @@ function schema_pgsql_inspect($tbl_name = NULL) {
     $numeric = !is_null($r['numeric_scale']);
 
     // Determine the Schema type and size from the database data_type.
-    list($col['type'], $col['size']) = schema_schema_type($r['data_type'],
-      'pgsql');
+    list($col['type'], $col['size']) = schema_schema_type($r['data_type'], $r['table_name'], $r['column_name'], 'pgsql');
 
     // Non-numeric columns (e.g. varchar) can have a 'length'.
     if (! $numeric && $r['character_maximum_length']) {

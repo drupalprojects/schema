@@ -2,45 +2,16 @@
 // $Id$
 
 function schema_mysql_engine_type_map() {
-  static $map;
-  if (!isset($map)) {
-    $map = array(
-      'varchar:normal' => 'varchar',
-      
-      'text:small' => 'smalltext',
-      'text:medium' => 'mediumtext',
-      'text:big' =>  'longtext',
-      'text:normal' => 'text',
-
-      'serial:normal' => 'int',
-      'serial:big' => 'bigint',
-
-      'int:tiny' => 'tinyint',
-      'int:small' => 'smallint',
-      'int:medium' => 'mediumint',
-      'int:big' => 'bigint',
-      'int:normal' => 'int',
-
-      'float:tiny' => 'float',
-      'float:small' => 'float',
-      'float:medium' => 'float',
-      'float:big' => 'double',
-      'float:normal' => 'float',
-      
-      'blob:big' => 'longblob',
-      'blob:normal' => 'blob',
-
-      'datetime:normal' => 'datetime',
-
-    );
-  }
+  $map = db_type_map();
+  // work around a bug in mysql's type map; see http://drupal.org/node/198234
+  $map['numeric:normal'] = 'DECIMAL';
   return $map;
 }
 
 function schema_mysql_schema_type_map() {
   static $map;
   if (!isset($map)) {
-    $map = array_flip(schema_mysql_engine_type_map());
+    $map = array_flip(array_map('strtolower', schema_mysql_engine_type_map()));
   }
   return $map;
 }
@@ -133,7 +104,7 @@ function schema_mysql_inspect($name = NULL) {
     $col['type'] = $r['COLUMN_TYPE'];
     if (preg_match('@([a-z]+)(?:\((\d+)\))?\s*(unsigned)?@', $col['type'],
           $matches)) {
-      list($col['type'], $col['size']) = schema_schema_type($matches[1], 'mysql');
+      list($col['type'], $col['size']) = schema_schema_type($matches[1], $r['TABLE_NAME'], $r['COLUMN_NAME'], 'mysql');
       if (isset($matches[2])) {
         if ($numeric) {
           $col['disp-width'] = $matches[2];
