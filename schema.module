@@ -356,10 +356,6 @@ function schema_compare_table($ref, $inspect = NULL) {
 // Schema administration and UI
 //////////////////////////////////////////////////////////////////////
 
-function schema_init() {
-  schema_require();
-}
-
 function schema_require() {
   static $done = 0;
   if ($done++) { return; }
@@ -411,58 +407,59 @@ function schema_perm() {
   return array('administer schema');
 }
 
-function schema_menu() {
-  $items['admin/build/schema'] = array(
+function schema_menu($may_cache = NULL) {
+  $items = array();
+
+  if (! $may_cache) {
+    schema_require();
+    return $items;
+  }
+
+  $items[] = array(
+    'path' => 'admin/build/schema',
     'title' => 'Schema',
     'description' => 'Manage the database schema for this system.',
-    'page callback' => 'schema_report',
-    'access arguments' => array('administer schema'),
+    'callback' => 'schema_report',
+    'access' => user_access('administer schema'),
     );
 
-  $items['admin/build/schema/report'] = array(
+  $items[] = array(
+    'path' => 'admin/build/schema/report',
     'title' => 'Compare',
     'type' => MENU_DEFAULT_LOCAL_TASK,
-    'page callback' => 'schema_report',
+    'callback' => 'schema_report',
     'weight' => -10,
     );
 
-  $items['admin/build/schema/describe'] = array(
+  $items[] = array(
+    'path' => 'admin/build/schema/describe',
     'title' => 'Describe',
     'type' => MENU_LOCAL_TASK,
-    'page callback' => 'schema_describe',
+    'callback' => 'schema_describe',
     'weight' => -8,
     );
 
-  $items['admin/build/schema/inspect'] = array(
+  $items[] = array(
+    'path' => 'admin/build/schema/inspect',
     'title' => 'Inspect',
     'type' => MENU_LOCAL_TASK,
-    'page callback' => 'schema_inspect',
+    'callback' => 'schema_inspect',
     );
 
-  $items['admin/build/schema/sql'] = array(
+  /* Not supported in D5 version.
+  $items[] = array(
+    'path' => 'admin/build/schema/sql',
     'title' => 'SQL',
     'type' => MENU_LOCAL_TASK,
-    'page callback' => 'schema_sql',
+    'callback' => 'schema_sql',
     );
+  */
 
-  // This can't work unless we rename the functions in database.*.inc.
-  global $db_type, $schema_engines;
-  if (FALSE && isset($schema_engines) && is_array($schema_engines)) {
-    foreach ($schema_engines as $engine) {
-      $items['admin/build/schema/sql/'.$engine] = array(
-        'title' => t($engine),
-        'type' => ($engine == $db_type ? MENU_DEFAULT_LOCAL_TASK : 
-          MENU_LOCAL_TASK),
-        'page callback' => 'schema_sql',
-        'callback arguments' => $engine,
-        );
-    }
-  }
-
-  $items['admin/build/schema/show'] = array(
+  $items[] = array(
+    'path' => 'admin/build/schema/show',
     'title' => 'Show',
     'type' => MENU_LOCAL_TASK,
-    'page callback' => 'schema_show',
+    'callback' => 'schema_show',
     'weight' => 10,
     );
 

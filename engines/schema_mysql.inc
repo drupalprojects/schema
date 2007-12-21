@@ -1,8 +1,50 @@
 <?php
 // $Id$
 
+/**
+ * This maps a generic data type in combination with its data size
+ * to the engine-specific data type.  Copied from D6.
+ */
 function schema_mysql_engine_type_map() {
-  $map = db_type_map();
+  // Put :normal last so it gets preserved by array_flip.  This makes
+  // it much easier for modules (such as schema.module) to map
+  // database types back into schema types.
+  $map = array(
+    'varchar:normal'  => 'VARCHAR',
+    'char:normal'     => 'CHAR',
+
+    'text:tiny'       => 'SMALLTEXT',
+    'text:small'      => 'SMALLTEXT',
+    'text:medium'     => 'MEDIUMTEXT',
+    'text:big'        => 'LONGTEXT',
+    'text:normal'     => 'TEXT',
+
+    'serial:tiny'     => 'TINYINT',
+    'serial:small'    => 'SMALLINT',
+    'serial:medium'   => 'MEDIUMINT',
+    'serial:big'      => 'BIGINT',
+    'serial:normal'   => 'INT',
+
+    'int:tiny'        => 'TINYINT',
+    'int:small'       => 'SMALLINT',
+    'int:medium'      => 'MEDIUMINT',
+    'int:big'         => 'BIGINT',
+    'int:normal'      => 'INT',
+
+    'float:tiny'      => 'FLOAT',
+    'float:small'     => 'FLOAT',
+    'float:medium'    => 'FLOAT',
+    'float:big'       => 'DOUBLE',
+    'float:normal'    => 'FLOAT',
+
+    'numeric:normal'  => 'NUMERIC',
+
+    'blob:big'        => 'LONGBLOB',
+    'blob:normal'     => 'BLOB',
+
+    'datetime:normal' => 'DATETIME',
+  );
+
   // work around a bug in mysql's type map; see http://drupal.org/node/198234
   $map['numeric:normal'] = 'DECIMAL';
   return $map;

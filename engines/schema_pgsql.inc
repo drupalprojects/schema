@@ -1,8 +1,50 @@
 <?php
 // $Id$
 
+/**
+ * This maps a generic data type in combination with its data size
+ * to the engine-specific data type.  Copied from D6.
+ */
 function schema_pgsql_engine_type_map() {
-  return db_type_map(); // sigh
+  // Put :normal last so it gets preserved by array_flip.  This makes
+  // it much easier for modules (such as schema.module) to map
+  // database types back into schema types.
+  $map = array(
+    'varchar:normal' => 'varchar',
+    'char:normal' => 'character',
+
+    'text:tiny' => 'text',
+    'text:small' => 'text',
+    'text:medium' => 'text',
+    'text:big' => 'text',
+    'text:normal' => 'text',
+
+    'int:tiny' => 'smallint',
+    'int:small' => 'smallint',
+    'int:medium' => 'int',
+    'int:big' => 'bigint',
+    'int:normal' => 'int',
+
+    'float:tiny' => 'real',
+    'float:small' => 'real',
+    'float:medium' => 'real',
+    'float:big' => 'double precision',
+    'float:normal' => 'real',
+
+    'numeric:normal'  => 'numeric',
+
+    'blob:big' => 'bytea',
+    'blob:normal' => 'bytea',
+
+    'datetime:normal' => 'timestamp',
+
+    'serial:tiny' => 'serial',
+    'serial:small' => 'serial',
+    'serial:medium' => 'serial',
+    'serial:big' => 'bigserial',
+    'serial:normal' => 'serial',
+  );
+  return $map;
 }
 
 function schema_pgsql_schema_type_map() {
