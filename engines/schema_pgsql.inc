@@ -2,13 +2,16 @@
 // $Id$
 
 function schema_pgsql_engine_type_map() {
-  return db_type_map(); // sigh
+  $map = db_type_map(); // sigh
+  // work around a bug in pgsql's type map; see http://drupal.org/node/198234
+  $map['char:normal'] = 'character';
+  return $map;
 }
 
 function schema_pgsql_schema_type_map() {
   static $map;
   if (!isset($map)) {
-    $map = array_flip(db_type_map()); // sigh
+    $map = array_flip(schema_pgsql_engine_type_map());
     $map['character varying'] = 'varchar:normal';
     $map['integer'] = 'int:normal';
   }

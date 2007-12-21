@@ -66,7 +66,11 @@ function schema_phpprint_column($col) {
     if (isset($col[$attr])) {
       if (is_string($col[$attr])) {
         $attrs[] = "'$attr' => '$col[$attr]'";
-      } else {
+      }
+      else if (is_bool($col[$attr])) {
+        $attrs[] = "'$attr' => ".($col[$attr] ? 'TRUE' : 'FALSE');
+      } 
+      else {
         $attrs[] = "'$attr' => $col[$attr]";
       }
       unset($col[$attr]);
