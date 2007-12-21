@@ -66,7 +66,11 @@ function schema_phpprint_column($col) {
     if (isset($col[$attr])) {
       if (is_string($col[$attr])) {
         $attrs[] = "'$attr' => '$col[$attr]'";
-      } else {
+      }
+      else if (is_bool($col[$attr])) {
+        $attrs[] = "'$attr' => ".($col[$attr] ? 'TRUE' : 'FALSE');
+      }
+      else {
         $attrs[] = "'$attr' => $col[$attr]";
       }
       unset($col[$attr]);
@@ -183,13 +187,15 @@ function schema_compare_schemas($ref, $inspect = NULL) {
     }
   }
 
-  // Error check: 'text' and 'blob' columns cannot have a default value
+  // Error check: 'text' and 'blob' columns cannot have a default
+  // value.  Do not warn about core tables because in this D5
+  // version those are core tables and do not follow all rules.
   foreach ($ref as $t_name => $table) {
     foreach ($table['fields'] as $c_name => $col) {
       switch ($col['type']) {
         case 'text':
         case 'blob':
-          if (isset($col['default'])) {
+          if ($table['module'] != 'core' && isset($col['default'])) {
             $info['warn'][] = t('%table.%column is type %type and may not have a default value', array('%table' => $t_name, '%column' => $c_name, '%type' => $col['type']));
           }
           break;
@@ -503,12 +509,12 @@ EOT;
       if (!empty($c_spec['description'])) {
         $desc = _schema_process_description($c_spec['description']);
         $rows[] = array(array('colspan' => count($row_hdrs), 'data' => $desc));
-      } else {
+      } else if ($t_spec['module'] != 'core') {
         drupal_set_message(_schema_process_description(t('Field {!table}.@field has no description.', array('!table' => $t_name, '@field' => $c_name))), 'error');
       }
     }
 
-    if (empty($t_spec['description'])) {
+    if (empty($t_spec['description']) && $t_spec['module'] != 'core') {
       drupal_set_message(_schema_process_description(t('Table {!table} has no description.', array('!table' => $t_name))), 'error');
     }
 

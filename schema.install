@@ -47,3 +47,1537 @@ function schema_requirements($phase) {
 
   return $reqs;
 }
+
+function schema_schema() {
+  $func = 'schema_'. $GLOBALS['db_type'] .'_schema';
+  return $func();
+}
+
+function schema_mysqli_schema() {
+  return schema_mysql_schema();
+}
+
+function schema_mysql_schema() {
+  $schema['access'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'aid' => array('type' => 'serial', 'not null' => TRUE, 'disp-width' => '11'),
+      'mask' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'type' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'status' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4')),
+    'primary key' => array('aid'),
+    );
+  $schema['accesslog'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'aid' => array('type' => 'serial', 'not null' => TRUE, 'disp-width' => '11'),
+      'sid' => array('type' => 'varchar', 'length' => '64', 'not null' => TRUE, 'default' => ''),
+      'title' => array('type' => 'varchar', 'length' => '255', 'not null' => FALSE),
+      'path' => array('type' => 'varchar', 'length' => '255', 'not null' => FALSE),
+      'url' => array('type' => 'varchar', 'length' => '255', 'not null' => FALSE),
+      'hostname' => array('type' => 'varchar', 'length' => '128', 'not null' => FALSE),
+      'uid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => FALSE, 'default' => 0, 'disp-width' => '10'),
+      'timer' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'timestamp' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10')),
+    'primary key' => array('aid'),
+    'indexes' => array(
+      'accesslog_timestamp' => array('timestamp')),
+    );
+  $schema['aggregator_category'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'cid' => array('type' => 'serial', 'not null' => TRUE, 'disp-width' => '11'),
+      'title' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'description' => array('type' => 'text', 'size' => 'big', 'not null' => TRUE),
+      'block' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4')),
+    'primary key' => array('cid'),
+    'unique keys' => array(
+      'title' => array('title')),
+    );
+  $schema['aggregator_category_feed'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'fid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'cid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11')),
+    'primary key' => array('fid', 'cid'),
+    );
+  $schema['aggregator_category_item'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'iid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'cid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11')),
+    'primary key' => array('iid', 'cid'),
+    );
+  $schema['aggregator_feed'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'fid' => array('type' => 'serial', 'not null' => TRUE, 'disp-width' => '11'),
+      'title' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'url' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'refresh' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'checked' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'link' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'description' => array('type' => 'text', 'size' => 'big', 'not null' => TRUE),
+      'image' => array('type' => 'text', 'size' => 'big', 'not null' => TRUE),
+      'etag' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'modified' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'block' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4')),
+    'primary key' => array('fid'),
+    'unique keys' => array(
+      'link' => array('url'),
+      'title' => array('title')),
+    );
+  $schema['aggregator_item'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'iid' => array('type' => 'serial', 'not null' => TRUE, 'disp-width' => '11'),
+      'fid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'title' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'link' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'author' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'description' => array('type' => 'text', 'size' => 'big', 'not null' => TRUE),
+      'timestamp' => array('type' => 'int', 'not null' => FALSE, 'disp-width' => '11'),
+      'guid' => array('type' => 'varchar', 'length' => '255', 'not null' => FALSE)),
+    'primary key' => array('iid'),
+    'indexes' => array(
+      'fid' => array('fid')),
+    );
+  $schema['authmap'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'aid' => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE, 'disp-width' => '10'),
+      'uid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'authname' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => ''),
+      'module' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => '')),
+    'primary key' => array('aid'),
+    'unique keys' => array(
+      'authname' => array('authname')),
+    );
+  $schema['blocks'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'module' => array('type' => 'varchar', 'length' => '64', 'not null' => TRUE, 'default' => ''),
+      'delta' => array('type' => 'varchar', 'length' => '32', 'not null' => TRUE, 'default' => '0'),
+      'theme' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'status' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4'),
+      'weight' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4'),
+      'region' => array('type' => 'varchar', 'length' => '64', 'not null' => TRUE, 'default' => 'left'),
+      'custom' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4'),
+      'throttle' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4'),
+      'visibility' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4'),
+      'pages' => array('type' => 'text', 'not null' => TRUE),
+      'title' => array('type' => 'varchar', 'length' => '64', 'not null' => TRUE, 'default' => '')),
+    );
+  $schema['blocks_roles'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'module' => array('type' => 'varchar', 'length' => '64', 'not null' => TRUE),
+      'delta' => array('type' => 'varchar', 'length' => '32', 'not null' => TRUE),
+      'rid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'disp-width' => '10')),
+    'primary key' => array('module', 'delta', 'rid'),
+    );
+  $schema['book'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'vid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'nid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'parent' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'weight' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4')),
+    'primary key' => array('vid'),
+    'indexes' => array(
+      'nid' => array('nid'),
+      'parent' => array('parent')),
+    );
+  $schema['boxes'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'bid' => array('type' => 'serial', 'not null' => TRUE, 'disp-width' => '11'),
+      'body' => array('type' => 'text', 'size' => 'big', 'not null' => FALSE),
+      'info' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => ''),
+      'format' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11')),
+    'primary key' => array('bid'),
+    'unique keys' => array(
+      'info' => array('info')),
+    );
+  $schema['cache'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'cid' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'data' => array('type' => 'blob', 'size' => 'big', 'not null' => FALSE),
+      'expire' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'created' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'headers' => array('type' => 'text', 'not null' => FALSE)),
+    'primary key' => array('cid'),
+    'indexes' => array(
+      'expire' => array('expire')),
+    );
+  $schema['cache_filter'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'cid' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'data' => array('type' => 'blob', 'size' => 'big', 'not null' => FALSE),
+      'expire' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'created' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'headers' => array('type' => 'text', 'not null' => FALSE)),
+    'primary key' => array('cid'),
+    'indexes' => array(
+      'expire' => array('expire')),
+    );
+  $schema['cache_menu'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'cid' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'data' => array('type' => 'blob', 'size' => 'big', 'not null' => FALSE),
+      'expire' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'created' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'headers' => array('type' => 'text', 'not null' => FALSE)),
+    'primary key' => array('cid'),
+    'indexes' => array(
+      'expire' => array('expire')),
+    );
+  $schema['cache_page'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'cid' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'data' => array('type' => 'blob', 'size' => 'big', 'not null' => FALSE),
+      'expire' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'created' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'headers' => array('type' => 'text', 'not null' => FALSE)),
+    'primary key' => array('cid'),
+    'indexes' => array(
+      'expire' => array('expire')),
+    );
+  $schema['client'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'cid' => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE, 'disp-width' => '10'),
+      'link' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'name' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => ''),
+      'mail' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => ''),
+      'slogan' => array('type' => 'text', 'size' => 'big', 'not null' => TRUE),
+      'mission' => array('type' => 'text', 'size' => 'big', 'not null' => TRUE),
+      'users' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'nodes' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'version' => array('type' => 'varchar', 'length' => '35', 'not null' => TRUE, 'default' => ''),
+      'created' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'changed' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11')),
+    'primary key' => array('cid'),
+    );
+  $schema['client_system'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'cid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'name' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'type' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => '')),
+    'primary key' => array('cid', 'name'),
+    );
+  $schema['comments'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'cid' => array('type' => 'serial', 'not null' => TRUE, 'disp-width' => '11'),
+      'pid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'nid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'uid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'subject' => array('type' => 'varchar', 'length' => '64', 'not null' => TRUE, 'default' => ''),
+      'comment' => array('type' => 'text', 'size' => 'big', 'not null' => TRUE),
+      'hostname' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => ''),
+      'timestamp' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'score' => array('type' => 'int', 'size' => 'medium', 'not null' => TRUE, 'default' => 0, 'disp-width' => '9'),
+      'status' => array('type' => 'int', 'unsigned' => TRUE, 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '3'),
+      'format' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'thread' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE),
+      'users' => array('type' => 'text', 'size' => 'big', 'not null' => FALSE),
+      'name' => array('type' => 'varchar', 'length' => '60', 'not null' => FALSE),
+      'mail' => array('type' => 'varchar', 'length' => '64', 'not null' => FALSE),
+      'homepage' => array('type' => 'varchar', 'length' => '255', 'not null' => FALSE)),
+    'primary key' => array('cid'),
+    'indexes' => array(
+      'lid' => array('nid')),
+    );
+  $schema['contact'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'cid' => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE, 'disp-width' => '10'),
+      'category' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'recipients' => array('type' => 'text', 'size' => 'big', 'not null' => TRUE),
+      'reply' => array('type' => 'text', 'size' => 'big', 'not null' => TRUE),
+      'weight' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4'),
+      'selected' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4')),
+    'primary key' => array('cid'),
+    'unique keys' => array(
+      'category' => array('category')),
+    );
+  $schema['files'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'fid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'nid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'filename' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'filepath' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'filemime' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'filesize' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10')),
+    'primary key' => array('fid'),
+    'indexes' => array(
+      'nid' => array('nid')),
+    );
+  $schema['file_revisions'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'fid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'vid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'description' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'list' => array('type' => 'int', 'unsigned' => TRUE, 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '3')),
+    'primary key' => array('fid', 'vid'),
+    'indexes' => array(
+      'vid' => array('vid')),
+    );
+  $schema['filters'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'format' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'module' => array('type' => 'varchar', 'length' => '64', 'not null' => TRUE, 'default' => ''),
+      'delta' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4'),
+      'weight' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4')),
+    'indexes' => array(
+      'weight' => array('weight')),
+    );
+  $schema['filter_formats'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'format' => array('type' => 'serial', 'not null' => TRUE, 'disp-width' => '11'),
+      'name' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'roles' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'cache' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4')),
+    'primary key' => array('format'),
+    'unique keys' => array(
+      'name' => array('name')),
+    );
+  $schema['flood'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'event' => array('type' => 'varchar', 'length' => '64', 'not null' => TRUE, 'default' => ''),
+      'hostname' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => ''),
+      'timestamp' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11')),
+    );
+  $schema['forum'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'nid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'vid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'tid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10')),
+    'primary key' => array('vid'),
+    'indexes' => array(
+      'nid' => array('nid'),
+      'tid' => array('tid')),
+    );
+  $schema['history'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'uid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'nid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'timestamp' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11')),
+    'primary key' => array('uid', 'nid'),
+    );
+  $schema['locales_meta'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'locale' => array('type' => 'varchar', 'length' => '12', 'not null' => TRUE, 'default' => ''),
+      'name' => array('type' => 'varchar', 'length' => '64', 'not null' => TRUE, 'default' => ''),
+      'enabled' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'isdefault' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'plurals' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'formula' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => '')),
+    'primary key' => array('locale'),
+    );
+  $schema['locales_source'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'lid' => array('type' => 'serial', 'not null' => TRUE, 'disp-width' => '11'),
+      'location' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'source' => array('type' => 'blob', 'not null' => TRUE)),
+    'primary key' => array('lid'),
+    'indexes' => array(
+      'source' => array(array('source', 30))),
+    );
+  $schema['locales_target'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'lid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'translation' => array('type' => 'blob', 'not null' => TRUE),
+      'locale' => array('type' => 'varchar', 'length' => '12', 'not null' => TRUE, 'default' => ''),
+      'plid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'plural' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11')),
+    'indexes' => array(
+      'lang' => array('locale'),
+      'lid' => array('lid'),
+      'plid' => array('plid'),
+      'plural' => array('plural')),
+    );
+  $schema['menu'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'mid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'pid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'path' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'title' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'description' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'weight' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4'),
+      'type' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10')),
+    'primary key' => array('mid'),
+    );
+  $schema['node'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'nid' => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE, 'disp-width' => '10'),
+      'vid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'type' => array('type' => 'varchar', 'length' => '32', 'not null' => TRUE, 'default' => ''),
+      'title' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => ''),
+      'uid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'status' => array('type' => 'int', 'not null' => TRUE, 'default' => 1, 'disp-width' => '11'),
+      'created' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'changed' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'comment' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'promote' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'moderate' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'sticky' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11')),
+    'primary key' => array('nid', 'vid'),
+    'unique keys' => array(
+      'vid' => array('vid')),
+    'indexes' => array(
+      'nid' => array('nid'),
+      'node_changed' => array('changed'),
+      'node_created' => array('created'),
+      'node_moderate' => array('moderate'),
+      'node_promote_status' => array('promote', 'status'),
+      'node_status_type' => array('status', 'type', 'nid'),
+      'node_title_type' => array('title', array('type', 4)),
+      'node_type' => array(array('type', 4)),
+      'status' => array('status'),
+      'uid' => array('uid')),
+    );
+  $schema['node_access'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'nid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'gid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'realm' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'grant_view' => array('type' => 'int', 'unsigned' => TRUE, 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '3'),
+      'grant_update' => array('type' => 'int', 'unsigned' => TRUE, 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '3'),
+      'grant_delete' => array('type' => 'int', 'unsigned' => TRUE, 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '3')),
+    'primary key' => array('nid', 'gid', 'realm'),
+    );
+  $schema['node_comment_statistics'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'nid' => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE, 'disp-width' => '10'),
+      'last_comment_timestamp' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'last_comment_name' => array('type' => 'varchar', 'length' => '60', 'not null' => FALSE),
+      'last_comment_uid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'comment_count' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10')),
+    'primary key' => array('nid'),
+    'indexes' => array(
+      'node_comment_timestamp' => array('last_comment_timestamp')),
+    );
+  $schema['node_counter'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'nid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'totalcount' => array('type' => 'int', 'unsigned' => TRUE, 'size' => 'big', 'not null' => TRUE, 'default' => 0, 'disp-width' => '20'),
+      'daycount' => array('type' => 'int', 'unsigned' => TRUE, 'size' => 'medium', 'not null' => TRUE, 'default' => 0, 'disp-width' => '8'),
+      'timestamp' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10')),
+    'primary key' => array('nid'),
+    'indexes' => array(
+      'daycount' => array('daycount'),
+      'timestamp' => array('timestamp'),
+      'totalcount' => array('totalcount')),
+    );
+  $schema['node_revisions'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'nid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'disp-width' => '10'),
+      'vid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'disp-width' => '10'),
+      'uid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'title' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => ''),
+      'body' => array('type' => 'text', 'size' => 'big', 'not null' => TRUE),
+      'teaser' => array('type' => 'text', 'size' => 'big', 'not null' => TRUE),
+      'log' => array('type' => 'text', 'size' => 'big', 'not null' => TRUE),
+      'timestamp' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'format' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11')),
+    'primary key' => array('vid'),
+    'indexes' => array(
+      'nid' => array('nid'),
+      'uid' => array('uid')),
+    );
+  $schema['node_type'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'type' => array('type' => 'varchar', 'length' => '32', 'not null' => TRUE),
+      'name' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'module' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE),
+      'description' => array('type' => 'text', 'size' => 'medium', 'not null' => TRUE),
+      'help' => array('type' => 'text', 'size' => 'medium', 'not null' => TRUE),
+      'has_title' => array('type' => 'int', 'unsigned' => TRUE, 'size' => 'tiny', 'not null' => TRUE, 'disp-width' => '3'),
+      'title_label' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'has_body' => array('type' => 'int', 'unsigned' => TRUE, 'size' => 'tiny', 'not null' => TRUE, 'disp-width' => '3'),
+      'body_label' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'min_word_count' => array('type' => 'int', 'unsigned' => TRUE, 'size' => 'small', 'not null' => TRUE, 'disp-width' => '5'),
+      'custom' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4'),
+      'modified' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4'),
+      'locked' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4'),
+      'orig_type' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => '')),
+    'primary key' => array('type'),
+    );
+  $schema['permission'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'rid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'perm' => array('type' => 'text', 'size' => 'big', 'not null' => FALSE),
+      'tid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10')),
+    'indexes' => array(
+      'rid' => array('rid')),
+    );
+  $schema['poll'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'nid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'runtime' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'active' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10')),
+    'primary key' => array('nid'),
+    );
+  $schema['poll_choices'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'chid' => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE, 'disp-width' => '10'),
+      'nid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'chtext' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => ''),
+      'chvotes' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'chorder' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11')),
+    'primary key' => array('chid'),
+    'indexes' => array(
+      'nid' => array('nid')),
+    );
+  $schema['poll_votes'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'nid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'disp-width' => '10'),
+      'uid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'chorder' => array('type' => 'int', 'not null' => TRUE, 'default' => -1, 'disp-width' => '11'),
+      'hostname' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => '')),
+    'indexes' => array(
+      'hostname' => array('hostname'),
+      'nid' => array('nid'),
+      'uid' => array('uid')),
+    );
+  $schema['profile_fields'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'fid' => array('type' => 'serial', 'not null' => TRUE, 'disp-width' => '11'),
+      'title' => array('type' => 'varchar', 'length' => '255', 'not null' => FALSE),
+      'name' => array('type' => 'varchar', 'length' => '128', 'not null' => FALSE),
+      'explanation' => array('type' => 'text', 'not null' => FALSE),
+      'category' => array('type' => 'varchar', 'length' => '255', 'not null' => FALSE),
+      'page' => array('type' => 'varchar', 'length' => '255', 'not null' => FALSE),
+      'type' => array('type' => 'varchar', 'length' => '128', 'not null' => FALSE),
+      'weight' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4'),
+      'required' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4'),
+      'register' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4'),
+      'visibility' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4'),
+      'autocomplete' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4'),
+      'options' => array('type' => 'text', 'not null' => FALSE)),
+    'primary key' => array('fid'),
+    'unique keys' => array(
+      'name' => array('name')),
+    'indexes' => array(
+      'category' => array('category')),
+    );
+  $schema['profile_values'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'fid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => FALSE, 'default' => 0, 'disp-width' => '10'),
+      'uid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => FALSE, 'default' => 0, 'disp-width' => '10'),
+      'value' => array('type' => 'text', 'not null' => FALSE)),
+    'indexes' => array(
+      'fid' => array('fid'),
+      'uid' => array('uid')),
+    );
+  $schema['role'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'rid' => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE, 'disp-width' => '10'),
+      'name' => array('type' => 'varchar', 'length' => '64', 'not null' => TRUE, 'default' => '')),
+    'primary key' => array('rid'),
+    'unique keys' => array(
+      'name' => array('name')),
+    );
+  $schema['search_dataset'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'sid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'type' => array('type' => 'varchar', 'length' => '16', 'not null' => FALSE),
+      'data' => array('type' => 'text', 'size' => 'big', 'not null' => TRUE)),
+    'indexes' => array(
+      'sid_type' => array('sid', 'type')),
+    );
+  $schema['search_index'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'word' => array('type' => 'varchar', 'length' => '50', 'not null' => TRUE, 'default' => ''),
+      'sid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'type' => array('type' => 'varchar', 'length' => '16', 'not null' => FALSE),
+      'fromsid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'fromtype' => array('type' => 'varchar', 'length' => '16', 'not null' => FALSE),
+      'score' => array('type' => 'float', 'not null' => FALSE)),
+    'indexes' => array(
+      'from_sid_type' => array('fromsid', 'fromtype'),
+      'sid_type' => array('sid', 'type'),
+      'word' => array('word')),
+    );
+  $schema['search_total'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'word' => array('type' => 'varchar', 'length' => '50', 'not null' => TRUE, 'default' => ''),
+      'count' => array('type' => 'float', 'not null' => FALSE)),
+    'primary key' => array('word'),
+    );
+  $schema['sequences'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'name' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'id' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10')),
+    'primary key' => array('name'),
+    );
+  $schema['sessions'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'uid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'disp-width' => '10'),
+      'sid' => array('type' => 'varchar', 'length' => '64', 'not null' => TRUE, 'default' => ''),
+      'hostname' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => ''),
+      'timestamp' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'cache' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'session' => array('type' => 'text', 'size' => 'big', 'not null' => FALSE)),
+    'primary key' => array('sid'),
+    'indexes' => array(
+      'timestamp' => array('timestamp'),
+      'uid' => array('uid')),
+    );
+  $schema['system'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'filename' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'name' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'type' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'description' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'status' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'throttle' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4'),
+      'bootstrap' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'schema_version' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => -1, 'disp-width' => '6'),
+      'weight' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11')),
+    'primary key' => array('filename'),
+    'indexes' => array(
+      'weight' => array('weight')),
+    );
+  $schema['term_data'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'tid' => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE, 'disp-width' => '10'),
+      'vid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'name' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'description' => array('type' => 'text', 'size' => 'big', 'not null' => FALSE),
+      'weight' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4')),
+    'primary key' => array('tid'),
+    'indexes' => array(
+      'vid' => array('vid')),
+    );
+  $schema['term_hierarchy'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'tid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'parent' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10')),
+    'primary key' => array('tid', 'parent'),
+    'indexes' => array(
+      'parent' => array('parent'),
+      'tid' => array('tid')),
+    );
+  $schema['term_node'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'nid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'tid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10')),
+    'primary key' => array('tid', 'nid'),
+    'indexes' => array(
+      'nid' => array('nid'),
+      'tid' => array('tid')),
+    );
+  $schema['term_relation'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'tid1' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'tid2' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10')),
+    'indexes' => array(
+      'tid1' => array('tid1'),
+      'tid2' => array('tid2')),
+    );
+  $schema['term_synonym'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'tid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'name' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => '')),
+    'indexes' => array(
+      'name' => array(array('name', 3)),
+      'tid' => array('tid')),
+    );
+  $schema['url_alias'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'pid' => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE, 'disp-width' => '10'),
+      'src' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => ''),
+      'dst' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => '')),
+    'primary key' => array('pid'),
+    'unique keys' => array(
+      'dst' => array('dst')),
+    'indexes' => array(
+      'src' => array('src')),
+    );
+  $schema['users'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'uid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'name' => array('type' => 'varchar', 'length' => '60', 'not null' => TRUE, 'default' => ''),
+      'pass' => array('type' => 'varchar', 'length' => '32', 'not null' => TRUE, 'default' => ''),
+      'mail' => array('type' => 'varchar', 'length' => '64', 'not null' => FALSE, 'default' => ''),
+      'mode' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4'),
+      'sort' => array('type' => 'int', 'size' => 'tiny', 'not null' => FALSE, 'default' => 0, 'disp-width' => '4'),
+      'threshold' => array('type' => 'int', 'size' => 'tiny', 'not null' => FALSE, 'default' => 0, 'disp-width' => '4'),
+      'theme' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'signature' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'created' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'access' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'login' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'status' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4'),
+      'timezone' => array('type' => 'varchar', 'length' => '8', 'not null' => FALSE),
+      'language' => array('type' => 'varchar', 'length' => '12', 'not null' => TRUE, 'default' => ''),
+      'picture' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'init' => array('type' => 'varchar', 'length' => '64', 'not null' => FALSE, 'default' => ''),
+      'data' => array('type' => 'text', 'size' => 'big', 'not null' => FALSE)),
+    'primary key' => array('uid'),
+    'unique keys' => array(
+      'name' => array('name')),
+    'indexes' => array(
+      'access' => array('access'),
+      'created' => array('created')),
+    );
+  $schema['users_roles'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'uid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'rid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10')),
+    'primary key' => array('uid', 'rid'),
+    );
+  $schema['variable'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'name' => array('type' => 'varchar', 'length' => '48', 'not null' => TRUE, 'default' => ''),
+      'value' => array('type' => 'text', 'size' => 'big', 'not null' => TRUE)),
+    'primary key' => array('name'),
+    );
+  $schema['vocabulary'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'vid' => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE, 'disp-width' => '10'),
+      'name' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'description' => array('type' => 'text', 'size' => 'big', 'not null' => FALSE),
+      'help' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'relations' => array('type' => 'int', 'unsigned' => TRUE, 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '3'),
+      'hierarchy' => array('type' => 'int', 'unsigned' => TRUE, 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '3'),
+      'multiple' => array('type' => 'int', 'unsigned' => TRUE, 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '3'),
+      'required' => array('type' => 'int', 'unsigned' => TRUE, 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '3'),
+      'tags' => array('type' => 'int', 'unsigned' => TRUE, 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '3'),
+      'module' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'weight' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '4')),
+    'primary key' => array('vid'),
+    );
+  $schema['vocabulary_node_types'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'vid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'type' => array('type' => 'varchar', 'length' => '32', 'not null' => TRUE, 'default' => '')),
+    'primary key' => array('vid', 'type'),
+    );
+  $schema['watchdog'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'wid' => array('type' => 'serial', 'not null' => TRUE, 'disp-width' => '11'),
+      'uid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11'),
+      'type' => array('type' => 'varchar', 'length' => '16', 'not null' => TRUE, 'default' => ''),
+      'message' => array('type' => 'text', 'size' => 'big', 'not null' => TRUE),
+      'severity' => array('type' => 'int', 'unsigned' => TRUE, 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'disp-width' => '3'),
+      'link' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'location' => array('type' => 'text', 'not null' => TRUE),
+      'referer' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => ''),
+      'hostname' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => ''),
+      'timestamp' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '11')),
+    'primary key' => array('wid'),
+    'indexes' => array(
+      'type' => array('type')),
+    );
+  return $schema;
+}
+
+function schema_pgsql_schema() {
+  $schema['access'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'aid' => array('type' => 'serial', 'not null' => TRUE),
+      'mask' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'type' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'status' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('aid'),
+    );
+  $schema['accesslog'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'aid' => array('type' => 'serial', 'not null' => TRUE),
+      'sid' => array('type' => 'varchar', 'length' => '64', 'not null' => TRUE, 'default' => ''),
+      'title' => array('type' => 'varchar', 'length' => '255', 'not null' => FALSE),
+      'path' => array('type' => 'varchar', 'length' => '255', 'not null' => FALSE),
+      'url' => array('type' => 'varchar', 'length' => '255', 'not null' => FALSE),
+      'hostname' => array('type' => 'varchar', 'length' => '128', 'not null' => FALSE),
+      'uid' => array('type' => 'int', 'unsigned' => 1, 'not null' => FALSE, 'default' => 0),
+      'timer' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'timestamp' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('aid'),
+    'indexes' => array(
+      'accesslog_timestamp' => array('timestamp')),
+    );
+  $schema['aggregator_category'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'cid' => array('type' => 'serial', 'not null' => TRUE),
+      'title' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'description' => array('type' => 'text', 'not null' => TRUE),
+      'block' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('cid'),
+    'unique keys' => array(
+      'title' => array('title')),
+    );
+  $schema['aggregator_category_feed'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'fid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'cid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('fid', 'cid'),
+    );
+  $schema['aggregator_category_item'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'iid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'cid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('iid', 'cid'),
+    );
+  $schema['aggregator_feed'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'fid' => array('type' => 'serial', 'not null' => TRUE),
+      'title' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'url' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'refresh' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'checked' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'link' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'description' => array('type' => 'text', 'not null' => TRUE, 'default' => ''),
+      'image' => array('type' => 'text', 'not null' => TRUE, 'default' => ''),
+      'etag' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'modified' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'block' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('fid'),
+    'unique keys' => array(
+      'title' => array('title'),
+      'url' => array('url')),
+    );
+  $schema['aggregator_item'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'iid' => array('type' => 'serial', 'not null' => TRUE),
+      'fid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'title' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'link' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'author' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'description' => array('type' => 'text', 'not null' => TRUE),
+      'timestamp' => array('type' => 'int', 'not null' => FALSE),
+      'guid' => array('type' => 'varchar', 'length' => '255', 'not null' => FALSE)),
+    'primary key' => array('iid'),
+    'indexes' => array(
+      'fid' => array('fid')),
+    );
+  $schema['authmap'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'aid' => array('type' => 'serial', 'unsigned' => 1, 'not null' => TRUE),
+      'uid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'authname' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => ''),
+      'module' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => '')),
+    'primary key' => array('aid'),
+    'unique keys' => array(
+      'authname' => array('authname')),
+    );
+  $schema['blocks'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'module' => array('type' => 'varchar', 'length' => '64', 'not null' => TRUE, 'default' => ''),
+      'delta' => array('type' => 'varchar', 'length' => '32', 'not null' => TRUE, 'default' => '0'),
+      'theme' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'status' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'weight' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'region' => array('type' => 'varchar', 'length' => '64', 'not null' => TRUE, 'default' => 'left'),
+      'custom' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'throttle' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'visibility' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'pages' => array('type' => 'text', 'not null' => TRUE, 'default' => ''),
+      'title' => array('type' => 'varchar', 'length' => '64', 'not null' => TRUE, 'default' => '')),
+    );
+  $schema['blocks_roles'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'module' => array('type' => 'varchar', 'length' => '64', 'not null' => TRUE),
+      'delta' => array('type' => 'varchar', 'length' => '32', 'not null' => TRUE),
+      'rid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE)),
+    'primary key' => array('module', 'delta', 'rid'),
+    );
+  $schema['book'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'vid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'nid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'parent' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'weight' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('vid'),
+    'indexes' => array(
+      'nid' => array('nid'),
+      'parent' => array('parent')),
+    );
+  $schema['boxes'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'bid' => array('type' => 'serial', 'not null' => TRUE),
+      'body' => array('type' => 'text', 'not null' => FALSE),
+      'info' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => ''),
+      'format' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('bid'),
+    'unique keys' => array(
+      'info' => array('info')),
+    );
+  $schema['cache'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'cid' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'data' => array('type' => 'blob', 'not null' => FALSE),
+      'expire' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'created' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'headers' => array('type' => 'text', 'not null' => FALSE)),
+    'primary key' => array('cid'),
+    'indexes' => array(
+      'expire' => array('expire')),
+    );
+  $schema['cache_filter'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'cid' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'data' => array('type' => 'blob', 'not null' => FALSE),
+      'expire' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'created' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'headers' => array('type' => 'text', 'not null' => FALSE)),
+    'primary key' => array('cid'),
+    'indexes' => array(
+      'expire' => array('expire')),
+    );
+  $schema['cache_menu'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'cid' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'data' => array('type' => 'blob', 'not null' => FALSE),
+      'expire' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'created' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'headers' => array('type' => 'text', 'not null' => FALSE)),
+    'primary key' => array('cid'),
+    'indexes' => array(
+      'expire' => array('expire')),
+    );
+  $schema['cache_page'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'cid' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'data' => array('type' => 'blob', 'not null' => FALSE),
+      'expire' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'created' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'headers' => array('type' => 'text', 'not null' => FALSE)),
+    'primary key' => array('cid'),
+    'indexes' => array(
+      'expire' => array('expire')),
+    );
+  $schema['client'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'cid' => array('type' => 'serial', 'unsigned' => 1, 'not null' => TRUE),
+      'link' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'name' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => ''),
+      'mail' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => ''),
+      'slogan' => array('type' => 'text', 'not null' => TRUE),
+      'mission' => array('type' => 'text', 'not null' => TRUE),
+      'users' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'nodes' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'version' => array('type' => 'varchar', 'length' => '35', 'not null' => TRUE, 'default' => ''),
+      'created' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'changed' => array('type' => 'int', 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('cid'),
+    );
+  $schema['client_system'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'cid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'name' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'type' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => '')),
+    'primary key' => array('cid', 'name'),
+    );
+  $schema['comments'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'cid' => array('type' => 'serial', 'not null' => TRUE),
+      'pid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'nid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'uid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'subject' => array('type' => 'varchar', 'length' => '64', 'not null' => TRUE, 'default' => ''),
+      'comment' => array('type' => 'text', 'not null' => TRUE),
+      'hostname' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => ''),
+      'timestamp' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'score' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'status' => array('type' => 'int', 'unsigned' => 1, 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'format' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'thread' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE),
+      'users' => array('type' => 'text', 'not null' => FALSE),
+      'name' => array('type' => 'varchar', 'length' => '60', 'not null' => FALSE),
+      'mail' => array('type' => 'varchar', 'length' => '64', 'not null' => FALSE),
+      'homepage' => array('type' => 'varchar', 'length' => '255', 'not null' => FALSE)),
+    'primary key' => array('cid'),
+    'indexes' => array(
+      'nid' => array('nid')),
+    );
+  $schema['contact'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'cid' => array('type' => 'serial', 'unsigned' => 1, 'not null' => TRUE),
+      'category' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'recipients' => array('type' => 'text', 'not null' => TRUE, 'default' => ''),
+      'reply' => array('type' => 'text', 'not null' => TRUE, 'default' => ''),
+      'weight' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'selected' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('cid'),
+    'unique keys' => array(
+      'category' => array('category')),
+    );
+  $schema['file_revisions'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'fid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'vid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'description' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'list' => array('type' => 'int', 'unsigned' => 1, 'size' => 'small', 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('fid', 'vid'),
+    'indexes' => array(
+      'vid' => array('vid')),
+    );
+  $schema['files'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'fid' => array('type' => 'serial', 'unsigned' => 1, 'not null' => TRUE),
+      'nid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'filename' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'filepath' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'filemime' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'filesize' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('fid'),
+    'indexes' => array(
+      'nid' => array('nid')),
+    );
+  $schema['filter_formats'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'format' => array('type' => 'serial', 'not null' => TRUE),
+      'name' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'roles' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'cache' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('format'),
+    'unique keys' => array(
+      'name' => array('name')),
+    );
+  $schema['filters'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'format' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'module' => array('type' => 'varchar', 'length' => '64', 'not null' => TRUE, 'default' => ''),
+      'delta' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'weight' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0)),
+    'indexes' => array(
+      'weight' => array('weight')),
+    );
+  $schema['flood'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'event' => array('type' => 'varchar', 'length' => '64', 'not null' => TRUE, 'default' => ''),
+      'hostname' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => ''),
+      'timestamp' => array('type' => 'int', 'not null' => TRUE, 'default' => 0)),
+    );
+  $schema['forum'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'nid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'vid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'tid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('vid'),
+    'indexes' => array(
+      'nid' => array('nid'),
+      'tid' => array('tid')),
+    );
+  $schema['history'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'uid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'nid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'timestamp' => array('type' => 'int', 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('uid', 'nid'),
+    );
+  $schema['locales_meta'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'locale' => array('type' => 'varchar', 'length' => '12', 'not null' => TRUE, 'default' => ''),
+      'name' => array('type' => 'varchar', 'length' => '64', 'not null' => TRUE, 'default' => ''),
+      'enabled' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'isdefault' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'plurals' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'formula' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => '')),
+    'primary key' => array('locale'),
+    );
+  $schema['locales_source'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'lid' => array('type' => 'serial', 'not null' => TRUE),
+      'location' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'source' => array('type' => 'text', 'not null' => TRUE)),
+    'primary key' => array('lid'),
+    'indexes' => array(
+      'source' => array('source')),
+    );
+  $schema['locales_target'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'lid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'translation' => array('type' => 'text', 'not null' => TRUE),
+      'locale' => array('type' => 'varchar', 'length' => '12', 'not null' => TRUE, 'default' => ''),
+      'plid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'plural' => array('type' => 'int', 'not null' => TRUE, 'default' => 0)),
+    'indexes' => array(
+      'lid' => array('lid'),
+      'locale' => array('locale'),
+      'plid' => array('plid'),
+      'plural' => array('plural')),
+    );
+  $schema['menu'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'mid' => array('type' => 'serial', 'unsigned' => 1, 'not null' => TRUE),
+      'pid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'path' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'title' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'description' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'weight' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'type' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('mid'),
+    );
+  $schema['node'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'nid' => array('type' => 'serial', 'unsigned' => 1, 'not null' => TRUE),
+      'vid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'type' => array('type' => 'varchar', 'length' => '32', 'not null' => TRUE, 'default' => ''),
+      'title' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => ''),
+      'uid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'status' => array('type' => 'int', 'not null' => TRUE, 'default' => 1),
+      'created' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'changed' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'comment' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'promote' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'moderate' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'sticky' => array('type' => 'int', 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('nid', 'vid'),
+    'unique keys' => array(
+      'vid' => array('vid')),
+    'indexes' => array(
+      'nid' => array('nid'),
+      'node_changed' => array('changed'),
+      'node_created' => array('created'),
+      'node_moderate' => array('moderate'),
+      'node_promote_status' => array('promote', 'status'),
+      'node_status_type' => array('status', 'type', 'nid'),
+      'node_title_type' => array('title', array('type', 4)),
+      'node_type' => array(array('type', 4)),
+      'status' => array('status'),
+      'uid' => array('uid')),
+    );
+  $schema['node_access'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'nid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'gid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'realm' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'grant_view' => array('type' => 'int', 'unsigned' => 1, 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'grant_update' => array('type' => 'int', 'unsigned' => 1, 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'grant_delete' => array('type' => 'int', 'unsigned' => 1, 'size' => 'small', 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('nid', 'gid', 'realm'),
+    );
+  $schema['node_comment_statistics'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'nid' => array('type' => 'serial', 'unsigned' => 1, 'not null' => TRUE),
+      'last_comment_timestamp' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'last_comment_name' => array('type' => 'varchar', 'length' => '60', 'not null' => FALSE),
+      'last_comment_uid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'comment_count' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('nid'),
+    'indexes' => array(
+      'node_comment_timestamp' => array('last_comment_timestamp')),
+    );
+  $schema['node_counter'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'nid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'totalcount' => array('type' => 'int', 'unsigned' => 1, 'size' => 'big', 'not null' => TRUE, 'default' => 0),
+      'daycount' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'timestamp' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('nid'),
+    'indexes' => array(
+      'daycount' => array('daycount'),
+      'timestamp' => array('timestamp'),
+      'totalcount' => array('totalcount')),
+    );
+  $schema['node_revisions'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'nid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE),
+      'vid' => array('type' => 'serial', 'unsigned' => 1, 'not null' => TRUE),
+      'uid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'title' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => ''),
+      'body' => array('type' => 'text', 'not null' => TRUE, 'default' => ''),
+      'teaser' => array('type' => 'text', 'not null' => TRUE, 'default' => ''),
+      'log' => array('type' => 'text', 'not null' => TRUE, 'default' => ''),
+      'timestamp' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'format' => array('type' => 'int', 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('vid'),
+    'indexes' => array(
+      'nid' => array('nid'),
+      'uid' => array('uid')),
+    );
+  $schema['node_type'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'type' => array('type' => 'varchar', 'length' => '32', 'not null' => TRUE),
+      'name' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'module' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE),
+      'description' => array('type' => 'text', 'not null' => TRUE),
+      'help' => array('type' => 'text', 'not null' => TRUE),
+      'has_title' => array('type' => 'int', 'unsigned' => 1, 'size' => 'small', 'not null' => TRUE),
+      'title_label' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'has_body' => array('type' => 'int', 'unsigned' => 1, 'size' => 'small', 'not null' => TRUE),
+      'body_label' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'min_word_count' => array('type' => 'int', 'unsigned' => 1, 'size' => 'small', 'not null' => TRUE),
+      'custom' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'modified' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'locked' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'orig_type' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => '')),
+    'primary key' => array('type'),
+    );
+  $schema['permission'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'rid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'perm' => array('type' => 'text', 'not null' => FALSE),
+      'tid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0)),
+    'indexes' => array(
+      'rid' => array('rid')),
+    );
+  $schema['poll'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'nid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'runtime' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'active' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('nid'),
+    );
+  $schema['poll_choices'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'chid' => array('type' => 'serial', 'unsigned' => 1, 'not null' => TRUE),
+      'nid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'chtext' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => ''),
+      'chvotes' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'chorder' => array('type' => 'int', 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('chid'),
+    'indexes' => array(
+      'nid' => array('nid')),
+    );
+  $schema['poll_votes'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'nid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE),
+      'uid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'chorder' => array('type' => 'int', 'not null' => TRUE, 'default' => -1),
+      'hostname' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => '')),
+    'indexes' => array(
+      'hostname' => array('hostname'),
+      'nid' => array('nid'),
+      'uid' => array('uid')),
+    );
+  $schema['profile_fields'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'fid' => array('type' => 'serial', 'not null' => TRUE),
+      'title' => array('type' => 'varchar', 'length' => '255', 'not null' => FALSE),
+      'name' => array('type' => 'varchar', 'length' => '128', 'not null' => FALSE),
+      'explanation' => array('type' => 'text', 'not null' => FALSE),
+      'category' => array('type' => 'varchar', 'length' => '255', 'not null' => FALSE),
+      'page' => array('type' => 'varchar', 'length' => '255', 'not null' => FALSE),
+      'type' => array('type' => 'varchar', 'length' => '128', 'not null' => FALSE),
+      'weight' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'required' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'register' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'visibility' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'autocomplete' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'options' => array('type' => 'text', 'not null' => FALSE)),
+    'primary key' => array('fid'),
+    'unique keys' => array(
+      'name' => array('name')),
+    'indexes' => array(
+      'category' => array('category')),
+    );
+  $schema['profile_values'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'fid' => array('type' => 'int', 'unsigned' => 1, 'not null' => FALSE, 'default' => 0),
+      'uid' => array('type' => 'int', 'unsigned' => 1, 'not null' => FALSE, 'default' => 0),
+      'value' => array('type' => 'text', 'not null' => FALSE)),
+    'indexes' => array(
+      'fid' => array('fid'),
+      'uid' => array('uid')),
+    );
+  $schema['role'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'rid' => array('type' => 'serial', 'unsigned' => 1, 'not null' => TRUE),
+      'name' => array('type' => 'varchar', 'length' => '64', 'not null' => TRUE, 'default' => '')),
+    'primary key' => array('rid'),
+    'unique keys' => array(
+      'name' => array('name')),
+    );
+  $schema['search_dataset'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'sid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'type' => array('type' => 'varchar', 'length' => '16', 'not null' => FALSE),
+      'data' => array('type' => 'text', 'not null' => TRUE)),
+    'indexes' => array(
+      'sid_type' => array('sid', 'type')),
+    );
+  $schema['search_index'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'word' => array('type' => 'varchar', 'length' => '50', 'not null' => TRUE, 'default' => ''),
+      'sid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'type' => array('type' => 'varchar', 'length' => '16', 'not null' => FALSE),
+      'fromsid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'fromtype' => array('type' => 'varchar', 'length' => '16', 'not null' => FALSE),
+      'score' => array('type' => 'float', 'size' => 'big', 'not null' => FALSE)),
+    'indexes' => array(
+      'from_sid_type' => array('fromsid', 'fromtype'),
+      'sid_type' => array('sid', 'type'),
+      'word' => array('word')),
+    );
+  $schema['search_total'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'word' => array('type' => 'varchar', 'length' => '50', 'not null' => TRUE, 'default' => ''),
+      'count' => array('type' => 'float', 'size' => 'big', 'not null' => FALSE)),
+    'primary key' => array('word'),
+    );
+  $schema['sessions'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'uid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE),
+      'sid' => array('type' => 'varchar', 'length' => '64', 'not null' => TRUE, 'default' => ''),
+      'hostname' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => ''),
+      'timestamp' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'cache' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'session' => array('type' => 'text', 'not null' => FALSE)),
+    'primary key' => array('sid'),
+    'indexes' => array(
+      'timestamp' => array('timestamp'),
+      'uid' => array('uid')),
+    );
+  $schema['system'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'filename' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'name' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'type' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'description' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'status' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'throttle' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'bootstrap' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'schema_version' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => -1),
+      'weight' => array('type' => 'int', 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('filename'),
+    'indexes' => array(
+      'weight' => array('weight')),
+    );
+  $schema['term_data'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'tid' => array('type' => 'serial', 'unsigned' => 1, 'not null' => TRUE),
+      'vid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'name' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'description' => array('type' => 'text', 'not null' => FALSE),
+      'weight' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('tid'),
+    'indexes' => array(
+      'vid' => array('vid')),
+    );
+  $schema['term_hierarchy'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'tid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'parent' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('tid', 'parent'),
+    'indexes' => array(
+      'parent' => array('parent'),
+      'tid' => array('tid')),
+    );
+  $schema['term_node'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'nid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'tid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('tid', 'nid'),
+    'indexes' => array(
+      'nid' => array('nid'),
+      'tid' => array('tid')),
+    );
+  $schema['term_relation'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'tid1' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'tid2' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0)),
+    'indexes' => array(
+      'tid1' => array('tid1'),
+      'tid2' => array('tid2')),
+    );
+  $schema['term_synonym'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'tid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'name' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => '')),
+    'indexes' => array(
+      'name' => array(array('name', 3)),
+      'tid' => array('tid')),
+    );
+  $schema['url_alias'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'pid' => array('type' => 'serial', 'unsigned' => 1, 'not null' => TRUE),
+      'src' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => ''),
+      'dst' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => '')),
+    'primary key' => array('pid'),
+    'unique keys' => array(
+      'dst' => array('dst')),
+    'indexes' => array(
+      'src' => array('src')),
+    );
+  $schema['users'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'uid' => array('type' => 'serial', 'unsigned' => 1, 'not null' => TRUE),
+      'name' => array('type' => 'varchar', 'length' => '60', 'not null' => TRUE, 'default' => ''),
+      'pass' => array('type' => 'varchar', 'length' => '32', 'not null' => TRUE, 'default' => ''),
+      'mail' => array('type' => 'varchar', 'length' => '64', 'not null' => FALSE, 'default' => ''),
+      'mode' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'sort' => array('type' => 'int', 'size' => 'small', 'not null' => FALSE, 'default' => 0),
+      'threshold' => array('type' => 'int', 'size' => 'small', 'not null' => FALSE, 'default' => 0),
+      'theme' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'signature' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'created' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'access' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'login' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'status' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'timezone' => array('type' => 'varchar', 'length' => '8', 'not null' => FALSE),
+      'language' => array('type' => 'varchar', 'length' => '12', 'not null' => TRUE, 'default' => ''),
+      'picture' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'init' => array('type' => 'varchar', 'length' => '64', 'not null' => FALSE, 'default' => ''),
+      'data' => array('type' => 'text', 'not null' => FALSE)),
+    'primary key' => array('uid'),
+    'unique keys' => array(
+      'name' => array('name')),
+    'indexes' => array(
+      'access' => array('access'),
+      'created' => array('created')),
+    );
+  $schema['users_roles'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'uid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'rid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('uid', 'rid'),
+    );
+  $schema['variable'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'name' => array('type' => 'varchar', 'length' => '48', 'not null' => TRUE, 'default' => ''),
+      'value' => array('type' => 'text', 'not null' => TRUE)),
+    'primary key' => array('name'),
+    );
+  $schema['vocabulary'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'vid' => array('type' => 'serial', 'unsigned' => 1, 'not null' => TRUE),
+      'name' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'description' => array('type' => 'text', 'not null' => FALSE),
+      'help' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'relations' => array('type' => 'int', 'unsigned' => 1, 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'hierarchy' => array('type' => 'int', 'unsigned' => 1, 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'multiple' => array('type' => 'int', 'unsigned' => 1, 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'required' => array('type' => 'int', 'unsigned' => 1, 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'tags' => array('type' => 'int', 'unsigned' => 1, 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'module' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'weight' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('vid'),
+    );
+  $schema['vocabulary_node_types'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'vid' => array('type' => 'int', 'unsigned' => 1, 'not null' => TRUE, 'default' => 0),
+      'type' => array('type' => 'varchar', 'length' => '32', 'not null' => TRUE, 'default' => '')),
+    'primary key' => array('vid', 'type'),
+    );
+  $schema['watchdog'] = array(
+    'module' => 'core',
+    'fields' => array(
+      'wid' => array('type' => 'serial', 'not null' => TRUE),
+      'uid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+      'type' => array('type' => 'varchar', 'length' => '16', 'not null' => TRUE, 'default' => ''),
+      'message' => array('type' => 'text', 'not null' => TRUE),
+      'severity' => array('type' => 'int', 'unsigned' => 1, 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'link' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'location' => array('type' => 'text', 'not null' => TRUE, 'default' => ''),
+      'referer' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => ''),
+      'hostname' => array('type' => 'varchar', 'length' => '128', 'not null' => TRUE, 'default' => ''),
+      'timestamp' => array('type' => 'int', 'not null' => TRUE, 'default' => 0)),
+    'primary key' => array('wid'),
+    'indexes' => array(
+      'type' => array('type')),
+    );
+  return $schema;
+}
