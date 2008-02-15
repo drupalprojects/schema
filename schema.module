@@ -522,7 +522,7 @@ EOT;
     $form = array();
     $form[$t_name] = array(
       '#type' => 'fieldset', 
-      '#title' => $t_name,
+      '#title' => t('@table (@module module)', array('@table' => $t_name, '@module' => $t_spec['module'])), 
       '#description' => !empty($t_spec['description']) ? _schema_process_description($t_spec['description']) : '',
       '#collapsible' => TRUE,
       '#collapsed' => TRUE,
