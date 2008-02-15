@@ -86,6 +86,10 @@ function schema_mysql_create_table_sql($table) {
 function schema_mysql_inspect($name = NULL) {
   global $db_url;
 
+  // We need to ignore tables that are not in Drupal's schema since
+  // they may generate spurious warnings.
+  $schema = drupal_get_schema(NULL, TRUE);
+
   $tables = array();
   $url = parse_url(is_array($db_url) ? $db_url['default'] : $db_url);
   $database = substr($url['path'], 1);
@@ -99,6 +103,12 @@ function schema_mysql_inspect($name = NULL) {
 
   $res = db_query($sql, $database, $name);
   while ($r = db_fetch_array($res)) {
+    $r['TABLE_NAME'] = schema_unprefix_table($r['TABLE_NAME']);
+    // Ignore tables not in Drupal's schema.
+    if (!isset($schema[$r['TABLE_NAME']])) {
+      continue;
+    }
+
     $numeric = !is_null($r['NUMERIC_SCALE']);
     $col = array();
     $col['type'] = $r['COLUMN_TYPE'];
@@ -138,6 +148,8 @@ function schema_mysql_inspect($name = NULL) {
     'ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX',
     $database);
   while ($r = db_fetch_array($res)) {
+    $r['TABLE_NAME'] = schema_unprefix_table($r['TABLE_NAME']);
+
     if (isset($r['SUB_PART']) && !is_null($r['SUB_PART'])) {
       $col = array($r['COLUMN_NAME'], intval($r['SUB_PART']));
     } else {

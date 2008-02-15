@@ -102,6 +102,37 @@ function schema_phpprint_key($keys) {
 // Schema comparison functions
 //////////////////////////////////////////////////////////////////////
 
+function schema_unprefix_table($name) {
+  global $db_prefix;
+  static $_db_prefix;
+
+  if (is_array($db_prefix)) {
+    if (!isset($_db_prefix)) {
+      foreach ($db_prefix as $key => $val) {
+        $_db_prefix[$val.$key] = $key;
+      }
+    }
+    if (isset($_db_prefix[$name])) {
+      return $_db_prefix[$name];
+    } else if (!empty($db_prefix['default']) && preg_match('@^'.$db_prefix['default'].'(.*)@', $name, $m)) {
+      return $m[1];
+    } else {
+      // On pgsql, key and index names are also prefixed
+      // (e.g. 'prefix_blocks_roles_rid_idx').
+      foreach ($db_prefix as $key => $val) {
+        if (($key != 'default' && preg_match('@^'.$val.'('.$key.'.*)@', $name, $m)) ||
+          ($key == 'default' && preg_match('@^'.$val.'(.*)@', $name, $m))) {
+          return $m[1];
+        }
+      }
+      return $name;
+    }
+  } else if (!empty($db_prefix) && preg_match('@^'.$db_prefix.'(.*)@', $name, $m)) {
+      return $m[1];
+  }
+  return $name;
+}
+
 function schema_invoke($op) {
   global $db_type;
   $function = 'schema_'.$db_type.'_'.$op;
