@@ -60,6 +60,10 @@ function schema_pgsql_schema_type_map() {
 function schema_pgsql_inspect($tbl_name = NULL) {
   global $db_url;
 
+  // We need to ignore tables that are not in Drupal's schema since
+  // they may generate spurious warnings.
+  $schema = drupal_get_schema(NULL, TRUE);
+
   $tables = array();
   $url = parse_url(is_array($db_url) ? $db_url['default'] : $db_url);
   $database = substr($url['path'], 1);
@@ -87,6 +91,12 @@ function schema_pgsql_inspect($tbl_name = NULL) {
   //
   while ($r = db_fetch_array($res)) {
     $col = array();
+
+    $r['table_name'] = schema_unprefix_table($r['table_name']);
+    // Ignore tables not in Drupal's schema.
+    if (!isset($schema[$r['table_name']])) {
+      continue;
+    }
 
     // We treat numeric columns slightly differently and identify them
     // because they have a 'numeric_scale' property.
@@ -173,6 +183,12 @@ function schema_pgsql_inspect($tbl_name = NULL) {
     '  ON ccu.constraint_name=cc.constraint_name '.
     'WHERE table_schema=\'public\'');
   while ($r = db_fetch_array($res)) {
+    $r['table_name'] = schema_unprefix_table($r['table_name']);
+    // Ignore tables not in Drupal's schema.
+    if (!isset($schema[$r['table_name']])) {
+      continue;
+    }
+
     if ($r['check_clause'] == '(('. $r['column_name'] .' >= 0))') {
       $tables[$r['table_name']]['fields'][$r['column_name']]['unsigned'] =TRUE;
     }
@@ -193,6 +209,13 @@ function schema_pgsql_inspect($tbl_name = NULL) {
     '      c.relnamespace=n.oid AND n.nspname=\'public\' '.
     'ORDER BY c2.relname');
   while ($r = db_fetch_array($res)) {
+    $r['tblname'] = schema_unprefix_table($r['tblname']);
+    $r['indname'] = schema_unprefix_table($r['indname']);
+    // Ignore tables not in Drupal's schema.
+    if (!isset($schema[$r['tblname']])) {
+      continue;
+    }
+
     if (preg_match('@CREATE(?: UNIQUE)? INDEX \w+ ON "?(\w+)"?(?: USING \w+)? \((.*)\)@', $r['inddef'], $m)) {
       list($all, $table, $keys) = $m;
 
