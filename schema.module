@@ -168,15 +168,15 @@ function schema_engine_type($col, $table, $field, $engine = NULL) {
 }
 
 // Convert an engine-specific data type into a Schema type.
-function schema_schema_type($type, $table, $field, $engine = NULL) {
+function schema_schema_type($type, $table, $field, $engine = NULL, $warn = TRUE) {
   $map = schema_engine_invoke($engine, 'schema_type_map');
   $type = strtolower($type);
   if (isset($map[$type])) {
     return explode(':', $map[$type]);
   } else {
-    drupal_set_message(t('Field %table.%field: no Schema type for %engine type %type.',
-                         array('%engine' => $engine, '%type' => $type, '%table' => $table, '%field' => $field)),
-      'error');
+    if ($warn) {
+      drupal_set_message(t('Field %table.%field: no Schema type for %engine type %type.', array('%engine' => $engine, '%type' => $type, '%table' => $table, '%field' => $field)), 'error');
+    }
     return array($type, 'normal');
   }
 }
@@ -459,6 +459,7 @@ function schema_menu() {
     'type' => MENU_DEFAULT_LOCAL_TASK,
     'page callback' => 'schema_report',
     'weight' => -10,
+    'access arguments' => array('administer schema'),
     );
 
   $items['admin/build/schema/describe'] = array(
@@ -466,18 +467,21 @@ function schema_menu() {
     'type' => MENU_LOCAL_TASK,
     'page callback' => 'schema_describe',
     'weight' => -8,
+    'access arguments' => array('administer schema'),
     );
 
   $items['admin/build/schema/inspect'] = array(
     'title' => 'Inspect',
     'type' => MENU_LOCAL_TASK,
     'page callback' => 'schema_inspect',
+    'access arguments' => array('administer schema'),
     );
 
   $items['admin/build/schema/sql'] = array(
     'title' => 'SQL',
     'type' => MENU_LOCAL_TASK,
     'page callback' => 'schema_sql',
+    'access arguments' => array('administer schema'),
     );
 
   // This can't work unless we rename the functions in database.*.inc.
@@ -490,6 +494,7 @@ function schema_menu() {
           MENU_LOCAL_TASK),
         'page callback' => 'schema_sql',
         'callback arguments' => $engine,
+        'access arguments' => array('administer schema'),
         );
     }
   }
@@ -499,6 +504,7 @@ function schema_menu() {
     'type' => MENU_LOCAL_TASK,
     'page callback' => 'schema_show',
     'weight' => 10,
+    'access arguments' => array('administer schema'),
     );
 
   return $items;
@@ -527,6 +533,9 @@ EOT;
       $type = $c_spec['type'];
       if (!empty($c_spec['length'])) {
         $type .= '('. $c_spec['length'] .')';
+      }
+      if (!empty($c_spec['scale']) && !empty($c_spec['precision'])) {
+        $type .= '('. $c_spec['precision'] .', '. $c_spec['scale'] .')';
       }
       if (!empty($c_spec['size']) && $c_spec['size'] != 'normal') {
         $type .= ':'.$c_spec['size'];
