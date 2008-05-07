@@ -22,8 +22,10 @@ function schema_phpprint($schema) {
 
 function schema_phpprint_table($name, $table) {
     $cols = array();
-    foreach ($table['fields'] as $colname => $col) {
-      $cols[] = "'$colname' => ".schema_phpprint_column($col);
+    if (isset($table['fields'])) {
+      foreach ($table['fields'] as $colname => $col) {
+        $cols[] = "'$colname' => ".schema_phpprint_column($col);
+      }
     }
     $unique = $index = array();
     if (isset($table['unique keys'])) {
@@ -198,6 +200,11 @@ function schema_compare_schemas($ref, $inspect = NULL) {
 
   // Error check: column type and default type must match
   foreach ($ref as $t_name => $table) {
+    if (! isset($table['fields']) || !is_array($table['fields'])) {
+      drupal_set_message(t('Table %table: Missing or invalid \'fields\' array.', array('%table' => $t_name)), 'error');
+      continue;
+    }
+
     foreach ($table['fields'] as $c_name => $col) {
       switch ($col['type']) {
         case 'int':
@@ -220,6 +227,10 @@ function schema_compare_schemas($ref, $inspect = NULL) {
 
   // Error check: 'text' and 'blob' columns cannot have a default value
   foreach ($ref as $t_name => $table) {
+    if (! isset($table['fields'])) {
+      continue;
+    }
+
     foreach ($table['fields'] as $c_name => $col) {
       switch ($col['type']) {
         case 'text':
