@@ -112,17 +112,21 @@ function schema_mysql_inspect($name = NULL) {
     $numeric = !is_null($r['NUMERIC_SCALE']);
     $col = array();
     $col['type'] = $r['COLUMN_TYPE'];
-    if (preg_match('@([a-z]+)(?:\((\d+)\))?\s*(unsigned)?@', $col['type'],
-          $matches)) {
+    if (preg_match('@([a-z]+)(?:\((\d+)(?:,(\d+))?\))?\s*(unsigned)?@', $col['type'], $matches)) {
       list($col['type'], $col['size']) = schema_schema_type($matches[1], $r['TABLE_NAME'], $r['COLUMN_NAME'], 'mysql', isset($schema[$r['TABLE_NAME']]));
       if (isset($matches[2])) {
-        if ($numeric) {
+        if ($col['type'] == 'numeric') {
+          $col['precision'] = $matches[2];
+          $col['scale'] = $matches[3];
+        }
+        else if ($numeric) {
           $col['disp-width'] = $matches[2];
-        } else {
+        } 
+        else {
           $col['length'] = $matches[2];
         }
       }
-      if (isset($matches[3])) {
+      if (isset($matches[4])) {
         $col['unsigned'] = TRUE;
       }
     }

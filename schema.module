@@ -293,7 +293,7 @@ function schema_compare_table($ref, $inspect = NULL) {
 
   $reasons = $notes = array();
   $col_keys = array_flip(
-    array('type', 'size', 'not null', 'length', 'unsigned', 'default'));
+    array('type', 'size', 'not null', 'length', 'unsigned', 'default', 'scale', 'precision'));
   foreach ($ref['fields'] as $colname => $col) {
 
     // Many Schema types can map to the same engine type (e.g. in

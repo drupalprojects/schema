@@ -54,10 +54,6 @@ function schema_pgsql_inspect($tbl_name = NULL) {
     $col = array();
 
     $r['table_name'] = schema_unprefix_table($r['table_name']);
-    // Ignore tables not in Drupal's schema.
-    if (!isset($schema[$r['table_name']])) {
-      continue;
-    }
 
     // We treat numeric columns slightly differently and identify them
     // because they have a 'numeric_scale' property.
@@ -69,6 +65,12 @@ function schema_pgsql_inspect($tbl_name = NULL) {
     // Non-numeric columns (e.g. varchar) can have a 'length'.
     if (! $numeric && $r['character_maximum_length']) {
       $col['length'] = $r['character_maximum_length'];
+    }
+
+    // Type 'numeric' columns have precision and scale
+    if ($col['type'] == 'numeric') {
+      $col['precision'] = (int) $r['numeric_precision'];
+      $col['scale'] = (int) $r['numeric_scale'];
     }
 
     // Any column can have NOT NULL.
@@ -138,11 +140,7 @@ function schema_pgsql_inspect($tbl_name = NULL) {
   // Make sur we caught all the unsigned columns.  I could not get
   // this to work as a left join on the previous query.
   //
-  $res = db_query('SELECT ccu.*, cc.check_clause '.
-    'FROM information_schema.constraint_column_usage ccu '.
-    'INNER JOIN information_schema.check_constraints cc '.
-    '  ON ccu.constraint_name=cc.constraint_name '.
-    'WHERE table_schema=\'public\'');
+  $res = db_query('SELECT ccu.*, cc.check_clause FROM information_schema.constraint_column_usage ccu INNER JOIN information_schema.check_constraints cc ON ccu.constraint_name=cc.constraint_name WHERE table_schema=\'public\'');
   while ($r = db_fetch_array($res)) {
     $r['table_name'] = schema_unprefix_table($r['table_name']);
     // Ignore tables not in Drupal's schema.
@@ -150,7 +148,8 @@ function schema_pgsql_inspect($tbl_name = NULL) {
       continue;
     }
 
-    if ($r['check_clause'] == '(('. $r['column_name'] .' >= 0))') {
+    if ($r['check_clause'] == '(('. $r['column_name'] .' >= 0))' ||
+      $r['check_clause'] == '(('. $r['column_name'] .' >= (0)::numeric))') {
       $tables[$r['table_name']]['fields'][$r['column_name']]['unsigned'] =TRUE;
     }
   }
