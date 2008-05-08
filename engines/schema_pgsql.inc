@@ -21,10 +21,6 @@ function schema_pgsql_schema_type_map() {
 function schema_pgsql_inspect($tbl_name = NULL) {
   global $db_url;
 
-  // We need to ignore tables that are not in Drupal's schema since
-  // they may generate spurious warnings.
-  $schema = drupal_get_schema(NULL, TRUE);
-
   $tables = array();
   $url = parse_url(is_array($db_url) ? $db_url['default'] : $db_url);
   $database = substr($url['path'], 1);
@@ -60,7 +56,7 @@ function schema_pgsql_inspect($tbl_name = NULL) {
     $numeric = !is_null($r['numeric_scale']);
 
     // Determine the Schema type and size from the database data_type.
-    list($col['type'], $col['size']) = schema_schema_type($r['data_type'], $r['table_name'], $r['column_name'], 'pgsql', isset($schema[$r['TABLE_NAME']]));
+    list($col['type'], $col['size']) = schema_schema_type($r['data_type'], $r['table_name'], $r['column_name'], 'pgsql');
 
     // Non-numeric columns (e.g. varchar) can have a 'length'.
     if (! $numeric && $r['character_maximum_length']) {
@@ -143,10 +139,6 @@ function schema_pgsql_inspect($tbl_name = NULL) {
   $res = db_query('SELECT ccu.*, cc.check_clause FROM information_schema.constraint_column_usage ccu INNER JOIN information_schema.check_constraints cc ON ccu.constraint_name=cc.constraint_name WHERE table_schema=\'public\'');
   while ($r = db_fetch_array($res)) {
     $r['table_name'] = schema_unprefix_table($r['table_name']);
-    // Ignore tables not in Drupal's schema.
-    if (!isset($schema[$r['table_name']])) {
-      continue;
-    }
 
     if ($r['check_clause'] == '(('. $r['column_name'] .' >= 0))' ||
       $r['check_clause'] == '(('. $r['column_name'] .' >= (0)::numeric))') {
@@ -171,10 +163,6 @@ function schema_pgsql_inspect($tbl_name = NULL) {
   while ($r = db_fetch_array($res)) {
     $r['tblname'] = schema_unprefix_table($r['tblname']);
     $r['indname'] = schema_unprefix_table($r['indname']);
-    // Ignore tables not in Drupal's schema.
-    if (!isset($schema[$r['tblname']])) {
-      continue;
-    }
 
     if (preg_match('@CREATE(?: UNIQUE)? INDEX \w+ ON "?(\w+)"?(?: USING \w+)? \((.*)\)@', $r['inddef'], $m)) {
       list($all, $table, $keys) = $m;

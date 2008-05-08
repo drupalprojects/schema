@@ -86,14 +86,6 @@ function schema_mysql_create_table_sql($table) {
 function schema_mysql_inspect($name = NULL) {
   global $db_url;
 
-  // We need to not warn about unknown data types in tables that are
-  // not in Drupal's schema since if they are not Drupal tables they 
-  // may generate spurious warnings.  Of course, this means we won't
-  // warn when generating schema structures for tables to be
-  // converted; we'll just output an invalid structure and get blamed
-  // that it does not work.
-  $schema = drupal_get_schema(NULL, TRUE);
-
   $tables = array();
   $url = parse_url(is_array($db_url) ? $db_url['default'] : $db_url);
   $database = substr($url['path'], 1);
@@ -113,7 +105,7 @@ function schema_mysql_inspect($name = NULL) {
     $col = array();
     $col['type'] = $r['COLUMN_TYPE'];
     if (preg_match('@([a-z]+)(?:\((\d+)(?:,(\d+))?\))?\s*(unsigned)?@', $col['type'], $matches)) {
-      list($col['type'], $col['size']) = schema_schema_type($matches[1], $r['TABLE_NAME'], $r['COLUMN_NAME'], 'mysql', isset($schema[$r['TABLE_NAME']]));
+      list($col['type'], $col['size']) = schema_schema_type($matches[1], $r['TABLE_NAME'], $r['COLUMN_NAME'], 'mysql');
       if (isset($matches[2])) {
         if ($col['type'] == 'numeric') {
           $col['precision'] = $matches[2];
