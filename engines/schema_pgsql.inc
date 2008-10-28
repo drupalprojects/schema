@@ -52,8 +52,8 @@ function schema_pgsql_inspect($tbl_name = NULL) {
     $r['table_name'] = schema_unprefix_table($r['table_name']);
 
     // We treat numeric columns slightly differently and identify them
-    // because they have a 'numeric_scale' property.
-    $numeric = !is_null($r['numeric_scale']);
+    // because they have a 'numeric_precision_radix' property.
+    $numeric = !is_null($r['numeric_precision_radix']);
 
     // Determine the Schema type and size from the database data_type.
     list($col['type'], $col['size']) = schema_schema_type($r['data_type'], $r['table_name'], $r['column_name'], 'pgsql');
