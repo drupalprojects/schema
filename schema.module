@@ -323,31 +323,30 @@ function schema_compare_table($ref, $inspect = NULL) {
       $reasons[] = "$colname: not in database";
       continue;
     }
-    // XXX These should be unified so one reason contains all
-    // mismatches between the columns.
-    $colcmp1 = array_diff_assoc($col, $inspect['fields'][$colname]);
-    if (count($colcmp1) != 0) {
-      foreach ($colcmp1 as $key => $val) {
-        $reasons[] = ("column $colname:<br/>declared: ".
-          schema_phpprint_column($col).'<br/>actual: '.
-          schema_phpprint_column($inspect['fields'][$colname]));
+    $kdiffs = array();
+    foreach ($col_keys as $key => $val) {
+
+      if ( !(
+
+          // First part tests that item exists for both and has same value in both places
+           ( isset($col[$key]) && !is_null($col[$key]) && $col[$key] !== FALSE
+          && isset($inspect['fields'][$colname][$key]) && $inspect['fields'][$colname][$key] !== FALSE
+          && $col[$key] == $inspect['fields'][$colname][$key] )
+
+          // Second test is that it does not exist or exists but is null in both places
+       || ( ( !isset($col[$key]) || is_null($col[$key]) || $col[$key] === FALSE)
+             && ( !isset($inspect['fields'][$colname][$key]) || $inspect['fields'][$colname][$key] === FALSE) ) ) ) {
+
+        // One way or another, difference between the two so note it to explicitly identify it later.
+        $kdiffs[] = $key;
       }
     }
-    $colcmp2 = array_diff_assoc($inspect['fields'][$colname], $col);
-    if (count($colcmp2) != 0) {
-      foreach ($colcmp2 as $key => $val) {
-        if (isset($col_keys[$key]) && !isset($colcmp1[$key])) {
-          if (!isset($col['key']) && isset($inspect['fields'][$colname]) &&
-              $inspect['fields'][$colname][$key] === FALSE) {
-            $notes[] = "column $colname: key '$key' not set, ignoring inspected default value";
-          } 
-          else {
-            $reasons[] = ("column $colname:<br/>declared: ".
-              schema_phpprint_column($col).'<br/>actual: '.
-              schema_phpprint_column($inspect['fields'][$colname]));
-          }
-        }
-      }
+    if (count($kdiffs) != 0) {
+      $reasons[] = "column $colname - difference".
+          ( count($kdiffs) > 1 ? 's' : '') ." on: ".
+          implode(', ', $kdiffs) ."<br/>declared: ".
+          schema_phpprint_column($col) .'<br/>actual: '.
+          schema_phpprint_column($inspect['fields'][$colname]);
     }
     unset($inspect['fields'][$colname]);
   }
