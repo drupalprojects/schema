@@ -86,8 +86,17 @@ function schema_mysql_create_table_sql($table) {
 function schema_mysql_inspect($name = NULL) {
   global $db_url;
 
+  // Switch to the active database connection.
+  // The only way to get the active connection's name is as a return value from
+  // db_set_active(). However, calling this function will automatically switch
+  // the active connection to 'default', which might not be what we want.
+  // Therefore, we must immediately call db_set_active() again with the desired
+  // connection name in order to proceed.
+  $active_db_connection = db_set_active();
+  db_set_active($active_db_connection);
+
   $tables = array();
-  $url = parse_url(is_array($db_url) ? $db_url['default'] : $db_url);
+  $url = parse_url(is_array($db_url) ? $db_url[$active_db_connection] : $db_url);
   $database = substr($url['path'], 1);
 
   $sql = ('SELECT * FROM information_schema.COLUMNS '.
