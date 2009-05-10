@@ -24,7 +24,7 @@ function schema_phpprint_table($name, $table) {
     $cols = array();
     if (isset($table['fields'])) {
       foreach ($table['fields'] as $colname => $col) {
-        $cols[] = "'$colname' => ".schema_phpprint_column($col);
+        $cols[] = "'$colname' => ".schema_phpprint_column($col, TRUE);
       }
     }
     $unique = $index = array();
@@ -39,27 +39,27 @@ function schema_phpprint_table($name, $table) {
       }
     }
     $out = '';
-    $out .= "\$schema['".$name."'] = array(\n    'fields' => array(\n         ";
-    $out .= implode(",\n         ", $cols);
-    $out .= "),\n";
+    $out .= "\$schema['".$name."'] = array(\n  'fields' => array(\n    ";
+    $out .= implode(",\n    ", $cols);
+    $out .= ",\n  ),\n";
     if (isset($table['primary key'])) {
-      $out .= "    'primary key' => array('".implode("', '", $table['primary key'])."'),\n";
+      $out .= "  'primary key' => array('".implode("', '", $table['primary key'])."'),\n";
     }
     if (count($unique) > 0) {
-      $out .= "    'unique keys' => array(\n         ";
-      $out .= implode(",\n         ", $unique);
-      $out .= "),\n";
+      $out .= "  'unique keys' => array(\n    ";
+      $out .= implode(",\n    ", $unique);
+      $out .= "\n  ),\n";
     }
     if (count($index) > 0) {
-      $out .= "    'indexes' => array(\n         ";
-      $out .= implode(",\n         ", $index);
-      $out .= "),\n";
+      $out .= "  'indexes' => array(\n    ";
+      $out .= implode(",\n    ", $index);
+      $out .= ",\n  ),\n";
     }
     $out .= ");\n";
     return $out;
 }
 
-function schema_phpprint_column($col) {
+function schema_phpprint_column($col, $multiline=FALSE) {
   $attrs = array();
   if ($col['type'] == 'varchar' || $col['size'] == 'normal') {
     unset($col['size']);
@@ -84,6 +84,9 @@ function schema_phpprint_column($col) {
     } else {
       $attrs[] = "'$attr' => $col[$attr]";
     }
+  }
+  if ($multiline) {
+    return "array(\n      ".implode(",\n      ", $attrs).",\n    )";
   }
   return "array(".implode(', ', $attrs).")";
 }
