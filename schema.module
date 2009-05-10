@@ -193,7 +193,7 @@ function schema_schema_type($type, $table, $field, $engine = NULL, $warn = TRUE)
     return explode(':', $map[$type]);
   } else {
     if ($warn) {
-      drupal_set_message(t('Field %table.%field: no Schema type for %engine type %type.', array('%engine' => $engine, '%type' => $type, '%table' => $table, '%field' => $field)), 'error');
+      drupal_set_message(t('Field @table.@field: no Schema type for @engine type @type.', array('@engine' => $engine, '@type' => $type, '@table' => $table, '@field' => $field)), 'error');
     }
     return array($type, 'normal');
   }
