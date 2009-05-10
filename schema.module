@@ -39,7 +39,9 @@ function schema_phpprint_table($name, $table) {
       }
     }
     $out = '';
-    $out .= "\$schema['".$name."'] = array(\n  'fields' => array(\n    ";
+    $out .= "\$schema['".$name."'] = array(\n";
+    $out .= "  'description' => t('TODO: please describe this table!'),\n";
+    $out .= "  'fields' => array(\n    ";
     $out .= implode(",\n    ", $cols);
     $out .= ",\n  ),\n";
     if (isset($table['primary key'])) {
@@ -61,6 +63,7 @@ function schema_phpprint_table($name, $table) {
 
 function schema_phpprint_column($col, $multiline=FALSE) {
   $attrs = array();
+  $attrs[] = "'description' => t('TODO: please describe this field!')";
   if ($col['type'] == 'varchar' || $col['size'] == 'normal') {
     unset($col['size']);
   }
@@ -539,6 +542,8 @@ to see that table's description and fields.  Table names within a table or
 field description are hyperlinks to that table's description.</p>
 EOT;
 
+  $default_table_description = t('TODO: please describe this table!');
+  $default_field_description = t('TODO: please describe this field!');
   foreach ($schema as $t_name => $t_spec) {
     $rows = array();
     foreach ($t_spec['fields'] as $c_name => $c_spec) {
@@ -561,7 +566,7 @@ EOT;
       $row[] = !empty($c_spec['not null']) ? 'NO' : 'YES';
       $row[] = isset($c_spec['default']) ? (is_string($c_spec['default']) ? '\''. $c_spec['default']. '\'' : $c_spec['default']) : '';
       $rows[] = $row;
-      if (!empty($c_spec['description'])) {
+      if (!empty($c_spec['description']) && $c_spec['description'] != $default_field_description) {
         $desc = _schema_process_description($c_spec['description']);
         $rows[] = array(array('colspan' => count($row_hdrs), 'data' => $desc));
       } else {
@@ -569,7 +574,7 @@ EOT;
       }
     }
 
-    if (empty($t_spec['description'])) {
+    if (empty($t_spec['description']) || $t_spec['description'] == $default_table_description) {
       drupal_set_message(_schema_process_description(t('Table {!table} has no description.', array('!table' => $t_name))), 'error');
     }
 
