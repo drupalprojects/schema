@@ -757,7 +757,7 @@ EOT;
 
 function schema_show() {
   $schema = drupal_get_schema(NULL, TRUE);
-  $show = print_r($schema,1);
+  $show = var_export($schema,1);
     
   $output = <<<EOT
 <p>This page displays the Drupal database schema data structure.  It is for
