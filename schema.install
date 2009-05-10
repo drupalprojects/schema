@@ -1,5 +1,13 @@
 <?php
-
+  
+/**  
+ * Implementation of hook_requirements().
+ * Checks installation requirements and do status reporting.
+ * @param phase 'install': ignored (no installation requirements)
+ *              'runtime': status reporting for database
+ * @return A keyed array of requirements
+ * @see schema_compare_schemas()
+ */
 function schema_requirements($phase) {
  $reqs = array();
  $t = get_t();

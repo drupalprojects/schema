@@ -1,17 +1,23 @@
 <?php
 // $Id$
 
+/**
+ * @file The Schema module provides functionality built on the Schema API.
+ */
 global $schema_engines;
 
 //////////////////////////////////////////////////////////////////////
-// schema_phpprint: Return a pretty ASCII-formatted version of a
-// $schema array.  This is nothing more than a specialized variation
-// of var_dump and similar functions and is used only as a convenience
-// to generate the PHP for existing database tables (to bootstrap
-// support for modules that previously used CREATE TABLE explicitly)
-// and for debugging.
+// Schema print functions
 //////////////////////////////////////////////////////////////////////
 
+/**
+ * Builds a pretty ASCII-formatted version of a $schema array.
+ *
+ * This is nothing more than a specialized variation of var_dump and
+ * similar functions and is used only as a convenience to generate the
+ * PHP for existing database tables (to bootstrap support for modules
+ * that previously used CREATE TABLE explicitly) and for debugging.
+ */
 function schema_phpprint($schema) {
   $out = '';
   foreach ($schema as $name => $table) {
@@ -160,7 +166,9 @@ function schema_engine_invoke($engine, $op) {
   return call_user_func_array($function, $args);
 }
 
-// Convert a column's Schema type into an engine-specific data type.
+/**
+ * Converts a column's Schema type into an engine-specific data type.
+ */
 function schema_engine_type($col, $table, $field, $engine = NULL) {
   $map = schema_engine_invoke($engine, 'engine_type_map');
   $size = (isset($col['size']) ? $col['size'] : 'normal');
@@ -175,7 +183,9 @@ function schema_engine_type($col, $table, $field, $engine = NULL) {
   }
 }
 
-// Convert an engine-specific data type into a Schema type.
+/**
+ * Convert an engine-specific data type into a Schema type.
+ */
 function schema_schema_type($type, $table, $field, $engine = NULL, $warn = TRUE) {
   $map = schema_engine_invoke($engine, 'schema_type_map');
   $type = strtolower($type);
@@ -189,10 +199,12 @@ function schema_schema_type($type, $table, $field, $engine = NULL, $warn = TRUE)
   }
 }
 
-// schema_compare_schemas: Compare two complete schemas.  $ref is
-// considered the reference copy and $inspect is compared against
-// it.  If $inspect is NULL, a schema for the currently database is
-// generated and used.
+/**
+ * Compares two complete schemas.  
+ * @param $ref is considered the reference copy
+ * @param $inspect is compared against it.  If $inspect is NULL, a
+ *         schema for the active database is generated and used.
+ */
 function schema_compare_schemas($ref, $inspect = NULL) {
   if (! isset($inspect)) {
     $inspect = schema_invoke('inspect');
@@ -278,10 +290,12 @@ function schema_compare_schemas($ref, $inspect = NULL) {
   return $info;
 }
 
-// schema_compare_table: Compare a reference specification (such as
-// one returned by a module's hook_schema) to an inspected specification from
-// the database.  If $inspect is not provided, the database is inspected.
-//
+/**
+ * Compares a reference specification (such as one returned by a
+ * module's hook_schema) to an inspected specification from the
+ * database.
+ * @param $inspect if not provided, the database is inspected.
+ */
 function schema_compare_table($ref, $inspect = NULL) {
   global $db_type;
   $_db_type = $db_type;
@@ -408,6 +422,10 @@ function schema_compare_table($ref, $inspect = NULL) {
 // Schema administration and UI
 //////////////////////////////////////////////////////////////////////
 
+/**
+ * Implementation of hook_init().
+ * Perform setup tasks.
+ */
 function schema_init() {
   schema_require();
 }
@@ -459,10 +477,23 @@ function schema_require() {
   }
 }
 
+/**
+ * Implementation of hook_perm().
+ */
 function schema_perm() {
   return array('administer schema');
 }
 
+/**
+ * Implementation of hook_menu().
+ * Define menu items and page callbacks.
+ * admin/build/schema           calls local task(default): schema_report()
+ * admin/build/schema/report    calls local task: schema_report()
+ * admin/build/schema/describe  calls local task: schema_describe()
+ * admin/build/schema/inspect   calls local task: schema_inspect()
+ * admin/build/schema/sql       calls local task: schema_sql()
+ * admin/build/schema/show      calls local task: schema_show()
+ */
 function schema_menu() {
   $items['admin/build/schema'] = array(
     'title' => 'Schema',
@@ -531,6 +562,9 @@ function _schema_process_description($desc) {
   return preg_replace('@{([a-z_]+)}@i', '<a href="#" onclick="Drupal.toggleFieldset($(\'#table-$1\')[0]); return false;">$1</a>', $desc);
 }
 
+/**
+ * "Describe" menu callback.
+ */
 function schema_describe() {
   $schema = drupal_get_schema(NULL, TRUE);
   ksort($schema);
@@ -593,8 +627,12 @@ EOT;
   return $output;
 }
 
-// This function just massages the data returned by
-// schema_compare_schemas() into HTML.
+
+/**
+ * "Report" menu callback.
+ * This function just massages the data returned by
+ * schema_compare_schemas() into HTML.
+ */
 function schema_report() {
   $states = array(
     'same' => t('Match'),
@@ -691,6 +729,10 @@ EOT;
   return $output;
 }
 
+
+/**
+ * "Inspect" menu callback.
+ */
 function schema_inspect() {
   $mods = module_list();
   sort($mods);
@@ -729,6 +771,10 @@ EOT;
   return $output;
 }
 
+
+/**
+ *  "SQL" menu callback.
+ */
 function schema_sql($engine = NULL) {
   $schema = drupal_get_schema(NULL, TRUE);
   $sql = '';
@@ -755,6 +801,11 @@ EOT;
   return $output;
 }
 
+/**
+ * "Show" menu callback.
+ * Displays drupal schema as php code, so you can reuse it
+ * as you need.
+ */
 function schema_show() {
   $schema = drupal_get_schema(NULL, TRUE);
   $show = var_export($schema,1);
