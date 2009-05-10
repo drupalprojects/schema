@@ -101,6 +101,9 @@ function schema_pgsql_inspect($tbl_name = NULL) {
         // numeric, use intval() or floatval() to extract the value as a
         // numeric type.
 
+        // The value is actually an expression, and may be stored with parentheses
+        $col['default'] = preg_replace('/^\((.*)\)$/', '\1', $col['default']);
+
         // more pgsql-specific stuff
         if (strpos($col['default'], 'nextval(\'') !== FALSE &&
           $def_type == 'regclass)') {
