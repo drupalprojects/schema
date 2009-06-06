@@ -3,8 +3,6 @@
 
 function schema_pgsql_engine_type_map() {
   $map = db_type_map(); // sigh
-  // work around a bug in pgsql's type map; see http://drupal.org/node/198234
-  $map['char:normal'] = 'character';
   return $map;
 }
 

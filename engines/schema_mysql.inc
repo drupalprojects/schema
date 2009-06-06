@@ -3,8 +3,6 @@
 
 function schema_mysql_engine_type_map() {
   $map = db_type_map();
-  // work around a bug in mysql's type map; see http://drupal.org/node/198234
-  $map['numeric:normal'] = 'DECIMAL';
   return $map;
 }
 
