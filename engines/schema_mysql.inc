@@ -174,5 +174,3 @@ function schema_mysql_inspect($name = NULL) {
 
   return $tables;
 }
-
-?>

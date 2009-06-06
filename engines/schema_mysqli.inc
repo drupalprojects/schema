@@ -16,5 +16,3 @@ function schema_mysqli_create_table_sql($table) {
 function schema_mysqli_inspect($name = NULL) {
   return schema_mysql_inspect($name);
 }
-
-?>

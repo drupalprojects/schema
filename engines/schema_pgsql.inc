@@ -211,5 +211,3 @@ function schema_pgsql_inspect($tbl_name = NULL) {
   // it is correct.
   return $tables;
 }
-
-?>

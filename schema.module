@@ -819,5 +819,3 @@ EOT;
 
   return $output;
 }
-  
-?>
