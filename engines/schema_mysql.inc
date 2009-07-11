@@ -112,7 +112,7 @@ function schema_mysql_inspect($name = NULL) {
     if (preg_match('@([a-z]+)(?:\((\d+)(?:,(\d+))?\))?\s*(unsigned)?@', $col['type'], $matches)) {
       list($col['type'], $col['size']) = schema_schema_type($matches[1], $r['TABLE_NAME'], $r['COLUMN_NAME'], 'mysql');
       if (isset($matches[2])) {
-        if ($col['type'] == 'numeric') {
+        if ($col['type'] == 'numeric' || $col['type'] == 'float' || $col['type'] == 'double') {
           $col['precision'] = $matches[2];
           $col['scale'] = $matches[3];
         }
