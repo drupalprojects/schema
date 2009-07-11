@@ -24,15 +24,13 @@ function schema_mysql_create_table_sql($table) {
     unset($col['unsigned']);
     if (isset($col['length']) && $col['length']) {
       $sql .= '('.$col['length'].')';
-    } else if (isset($col['disp-width']) && $col['disp-width']) {
-      $sql .= '('.$col['disp-width'].')';
-    }
+    } 
     if (isset($col['type']) && $col['type'] == 'serial') {
       $sql .= ' AUTO_INCREMENT';
     }
     unset($col['type']);
     unset($col['length']);
-    unset($col['disp-width']);
+
     if (isset($col['not null']) && $col['not null']) {
       $sql .= ' NOT NULL';
     }
@@ -118,10 +116,7 @@ function schema_mysql_inspect($name = NULL) {
           $col['precision'] = $matches[2];
           $col['scale'] = $matches[3];
         }
-        else if ($numeric) {
-          $col['disp-width'] = $matches[2];
-        } 
-        else {
+        else if (!$numeric) {
           $col['length'] = $matches[2];
         }
       }
