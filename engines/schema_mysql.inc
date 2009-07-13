@@ -104,7 +104,7 @@ function schema_mysql_inspect($name = NULL) {
 
   $res = db_query($sql, $database, $name);
   while ($r = db_fetch_array($res)) {
-    $r['TABLE_NAME'] = schema_unprefix_table($r['TABLE_NAME']);
+    $r['NEW_TABLE_NAME'] = schema_unprefix_table($r['TABLE_NAME']);
 
     $numeric = !is_null($r['NUMERIC_SCALE']);
     $col = array();
@@ -138,7 +138,9 @@ function schema_mysql_inspect($name = NULL) {
       }
     }
     $tables[$r['TABLE_NAME']]['fields'][$r['COLUMN_NAME']] = $col;
-    $tables[$r['TABLE_NAME']]['name'] = $r['TABLE_NAME'];
+    // At this point, $tables is indexed by the raw db table name - save the unprefixed
+    // name for later use
+    $tables[$r['TABLE_NAME']]['name'] = $r['NEW_TABLE_NAME'];
   }
 
   $res = db_query('SELECT * FROM information_schema.STATISTICS '.
@@ -146,8 +148,6 @@ function schema_mysql_inspect($name = NULL) {
     'ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX',
     $database);
   while ($r = db_fetch_array($res)) {
-    $r['TABLE_NAME'] = schema_unprefix_table($r['TABLE_NAME']);
-
     if (isset($r['SUB_PART']) && !is_null($r['SUB_PART'])) {
       $col = array($r['COLUMN_NAME'], intval($r['SUB_PART']));
     } else {
@@ -164,6 +164,16 @@ function schema_mysql_inspect($name = NULL) {
     }
     $tables[$r['TABLE_NAME']][$type][$r['INDEX_NAME']][] = $col;
   }
+  
+  // Now, for tables which we have unprefixed, index $tables by the unprefixed name
+  foreach ($tables as $tablename => $table) {
+    $newname = $tables[$tablename]['name'];
+    if ($tablename != $newname) {
+      $tables[$newname] = $table;
+      unset($tables[$tablename]);
+    }
+  }
 
   return $tables;
 }
+

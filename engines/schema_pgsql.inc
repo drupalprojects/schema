@@ -56,7 +56,7 @@ function schema_pgsql_inspect($tbl_name = NULL) {
   while ($r = db_fetch_array($res)) {
     $col = array();
 
-    $r['table_name'] = schema_unprefix_table($r['table_name']);
+    $r['new_table_name'] = schema_unprefix_table($r['table_name']);
 
     // We treat numeric columns slightly differently and identify them
     // because they have a 'numeric_precision_radix' property.
@@ -139,7 +139,9 @@ function schema_pgsql_inspect($tbl_name = NULL) {
 
     // Save the column definition we just derived from $r.
     $tables[$r['table_name']]['fields'][$r['column_name']] = $col;
-    $tables[$r['table_name']]['name'] = $r['table_name'];
+    // At this point, $tables is indexed by the raw db table name - save the unprefixed
+    // name for later use
+    $tables[$r['table_name']]['name'] = $r['new_table_name'];
   }
 
   //
@@ -204,6 +206,15 @@ function schema_pgsql_inspect($tbl_name = NULL) {
     else {
       watchdog('schema', 'unrecognized pgsql index definition: @stmt',
         array('@stmt' => $r['inddef']));
+    }
+  }
+  
+  // Now, for tables which we have unprefixed, index $tables by the unprefixed name
+  foreach ($tables as $tablename => $table) {
+    $newname = $tables[$tablename]['name'];
+    if ($tablename != $newname) {
+      $tables[$newname] = $table;
+      unset($tables[$tablename]);
     }
   }
 
