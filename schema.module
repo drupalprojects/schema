@@ -310,7 +310,7 @@ function schema_compare_table($ref, $inspect = NULL) {
   if (! isset($inspect)) {
     $ref_name = db_prefix_tables('{'. $ref['name'] .'}');
     $inspect = schema_invoke('inspect', $ref_name);
-    $inspect = $inspect[$ref_name];
+    $inspect = $inspect[$ref['name']];
   }
   if (! isset($inspect)) {
     return array('status' => 'missing');

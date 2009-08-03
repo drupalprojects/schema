@@ -143,10 +143,14 @@ function schema_mysql_inspect($name = NULL) {
     $tables[$r['TABLE_NAME']]['name'] = $r['NEW_TABLE_NAME'];
   }
 
-  $res = db_query('SELECT * FROM information_schema.STATISTICS '.
-    'WHERE TABLE_SCHEMA="%s" '.
-    'ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX',
-    $database);
+  $sql = ('SELECT * FROM information_schema.STATISTICS '.
+    'WHERE TABLE_SCHEMA="%s" ');
+  if (isset($name)) {
+    $sql .= 'AND TABLE_NAME = "%s" ';
+  }
+  $sql .= 'ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX';
+
+  $res = db_query($sql, $database, $name);
   while ($r = db_fetch_array($res)) {
     if (isset($r['SUB_PART']) && !is_null($r['SUB_PART'])) {
       $col = array($r['COLUMN_NAME'], intval($r['SUB_PART']));

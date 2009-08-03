@@ -62,5 +62,9 @@ class SchemaRegressionTest extends DrupalWebTestCase {
     $this->assertFalse(isset($fields['fid']), t('fid does not exist'));
     $this->assertTrue(isset($fields['sourceid']), t('sourceid exists'));
     $this->assertTrue(isset($fields['destid']), t('destid exists'));
+
+    // Inspect the table by using schema_compare().
+    $comparison = schema_compare_table($inspect[$tablename]);
+    $this->assertEqual($comparison['status'], 'same');
   }
 }
