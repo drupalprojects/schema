@@ -146,10 +146,6 @@ function schema_mysql_inspect($name = NULL) {
   $res = db_query($sql, $database, $name);
   while ($r = db_fetch_array($res)) {
     $r['TABLE_NAME'] = schema_unprefix_table($r['TABLE_NAME']);
-    // Ignore tables not in Drupal's schema.
-    if (!isset($schema[$r['TABLE_NAME']])) {
-      continue;
-    }
 
     $numeric = !is_null($r['NUMERIC_SCALE']);
     $col = array();
@@ -168,7 +164,7 @@ function schema_mysql_inspect($name = NULL) {
         $col['unsigned'] = TRUE;
       }
     }
-    if ($col['type'] == 'int' && isset($r['EXTRA']) && 
+    if ($col['type'] == 'int' && isset($r['EXTRA']) &&
       $r['EXTRA'] == 'auto_increment') {
       $col['type'] = 'serial';
     }
