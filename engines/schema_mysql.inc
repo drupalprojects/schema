@@ -24,7 +24,7 @@ function schema_mysql_create_table_sql($table) {
     unset($col['unsigned']);
     if (isset($col['length']) && $col['length']) {
       $sql .= '('.$col['length'].')';
-    } 
+    }
     if (isset($col['type']) && $col['type'] == 'serial') {
       $sql .= ' AUTO_INCREMENT';
     }
@@ -82,6 +82,17 @@ function schema_mysql_create_table_sql($table) {
 function schema_mysql_inspect($name = NULL) {
   global $db_url;
 
+  // Querying INFORMATION_SCHEMA can be expensive, so cache the results
+  static $cached_tables;
+  if (isset($cached_tables)) {
+    if (isset($name)) {
+      return array($cached_tables[$name]);
+    }
+    else {
+      return $cached_tables;
+    }
+  }
+
   // Switch to the active database connection.
   // The only way to get the active connection's name is as a return value from
   // db_set_active(). However, calling this function will automatically switch
@@ -95,8 +106,10 @@ function schema_mysql_inspect($name = NULL) {
   $url = parse_url(is_array($db_url) ? $db_url[$active_db_connection] : $db_url);
   $database = substr($url['path'], 1);
 
-  $sql = ('SELECT * FROM information_schema.COLUMNS '.
-	  'WHERE TABLE_SCHEMA="%s" ');
+  $sql = 'SELECT TABLE_NAME, COLUMN_TYPE, COLUMN_NAME, COLUMN_DEFAULT,
+                 EXTRA, IS_NULLABLE, NUMERIC_SCALE
+          FROM information_schema.COLUMNS
+          WHERE TABLE_SCHEMA="%s" ';
   if (isset($name)) {
     $sql .= 'AND TABLE_NAME = "%s" ';
   }
@@ -124,7 +137,7 @@ function schema_mysql_inspect($name = NULL) {
         $col['unsigned'] = TRUE;
       }
     }
-    if ($col['type'] == 'int' && isset($r['EXTRA']) && 
+    if ($col['type'] == 'int' && isset($r['EXTRA']) &&
       $r['EXTRA'] == 'auto_increment') {
       $col['type'] = 'serial';
     }
@@ -143,8 +156,9 @@ function schema_mysql_inspect($name = NULL) {
     $tables[$r['TABLE_NAME']]['name'] = $r['NEW_TABLE_NAME'];
   }
 
-  $sql = ('SELECT * FROM information_schema.STATISTICS '.
-    'WHERE TABLE_SCHEMA="%s" ');
+  $sql = 'SELECT TABLE_NAME, COLUMN_NAME, INDEX_NAME, SUB_PART, NON_UNIQUE
+          FROM information_schema.STATISTICS
+          WHERE TABLE_SCHEMA="%s" ';
   if (isset($name)) {
     $sql .= 'AND TABLE_NAME = "%s" ';
   }
@@ -168,7 +182,7 @@ function schema_mysql_inspect($name = NULL) {
     }
     $tables[$r['TABLE_NAME']][$type][$r['INDEX_NAME']][] = $col;
   }
-  
+
   // Now, for tables which we have unprefixed, index $tables by the unprefixed name
   foreach ($tables as $tablename => $table) {
     $newname = $tables[$tablename]['name'];
@@ -178,6 +192,8 @@ function schema_mysql_inspect($name = NULL) {
     }
   }
 
+  if (!isset($name)) {
+    $cached_tables = $tables;
+  }
   return $tables;
 }
-
