@@ -82,17 +82,6 @@ function schema_mysql_create_table_sql($table) {
 function schema_mysql_inspect($name = NULL) {
   global $db_url;
 
-  // Querying INFORMATION_SCHEMA can be expensive, so cache the results
-  static $cached_tables;
-  if (isset($cached_tables)) {
-    if (isset($name)) {
-      return array($cached_tables[$name]);
-    }
-    else {
-      return $cached_tables;
-    }
-  }
-
   // Switch to the active database connection.
   // The only way to get the active connection's name is as a return value from
   // db_set_active(). However, calling this function will automatically switch
@@ -192,8 +181,5 @@ function schema_mysql_inspect($name = NULL) {
     }
   }
 
-  if (!isset($name)) {
-    $cached_tables = $tables;
-  }
   return $tables;
 }
