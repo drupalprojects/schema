@@ -278,7 +278,12 @@ function schema_compare_schemas($ref, $inspect = NULL) {
   }
 
   foreach ($ref as $name => $table) {
-    $module = $table['module'];
+    if (isset($table['module'])) {
+      $module = $table['module'];
+    }
+    else {
+      $module = '';
+    }
     if (!isset($inspect[$name])) {
       $info['missing'][$module][$name] = array('status' => 'missing');
     } else {
