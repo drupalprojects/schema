@@ -353,6 +353,12 @@ function schema_compare_table($ref, $inspect = NULL) {
       $reasons[] = "$colname: not in database";
       continue;
     }
+
+    // Account for schemas that contain unnecessary 'default' => NULL
+    if (is_null($col['default']) && !isset($inspect['fields'][$colname]['default'])) {
+      unset($col['default']);
+    }
+
     $kdiffs = array();
     foreach ($col_keys as $key => $val) {
 
