@@ -190,13 +190,13 @@ function schema_engine_type($col, $table, $field, $engine = NULL) {
 /**
  * Convert an engine-specific data type into a Schema type.
  */
-function schema_schema_type($type, $table, $field, $engine = NULL, $warn = TRUE) {
+function schema_schema_type($type, $table, $field, $engine = NULL) {
   $map = schema_engine_invoke($engine, 'schema_type_map');
   $type = strtolower($type);
   if (isset($map[$type])) {
     return explode(':', $map[$type]);
   } else {
-    if ($warn) {
+    if (!variable_get('schema_suppress_type_warnings', FALSE)) {
       drupal_set_message(t('Field @table.@field: no Schema type for @engine type @type.', array('@engine' => $engine, '@type' => $type, '@table' => $table, '@field' => $field)), 'error');
     }
     return array($type, 'normal');
@@ -355,7 +355,8 @@ function schema_compare_table($ref, $inspect = NULL) {
     }
 
     // Account for schemas that contain unnecessary 'default' => NULL
-    if (is_null($col['default']) && !isset($inspect['fields'][$colname]['default'])) {
+    if (!isset($col['default']) ||
+        (is_null($col['default']) && !isset($inspect['fields'][$colname]['default']))) {
       unset($col['default']);
     }
 
@@ -643,7 +644,8 @@ EOT;
     $form = array();
     $form[$t_name] = array(
       '#type' => 'fieldset',
-      '#title' => t('@table (@module module)', array('@table' => $t_name, '@module' => $t_spec['module'])),
+      '#title' => t('@table (@module module)',
+        array('@table' => $t_name, '@module' => isset($t_spec['module']) ? $t_spec['module'] : '')),
       '#description' => !empty($t_spec['description']) ? _schema_process_description($t_spec['description']) : '',
       '#collapsible' => TRUE,
       '#collapsed' => TRUE,
@@ -768,7 +770,7 @@ function schema_inspect() {
   $schema = drupal_get_schema(NULL, TRUE);
   $inspect = schema_invoke('inspect');
   foreach ($inspect as $name => $table) {
-    $module = isset($schema[$name]) ? $schema[$name]['module'] : 'Unknown';
+    $module = isset($schema[$name]['module']) ? $schema[$name]['module'] : 'Unknown';
     if (!isset($form[$module])) {
       $form[$module] = array(
         '#type' => 'fieldset',
@@ -855,6 +857,12 @@ function schema_settings() {
     '#default_value' => variable_get('schema_status_report', TRUE),
     '#description' => t('When checked, schema comparison reports are run on
       the Administer page, and included in the site status report.'),
+  );
+  $form['schema_suppress_type_warnings'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Suppress schema warnings.'),
+    '#default_value' => variable_get('schema_suppress_type_warnings', FALSE),
+    '#description' => t('When checked, missing schema type warnings will be suppressed.'),
   );
   return system_settings_form($form);
 }
