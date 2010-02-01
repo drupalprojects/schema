@@ -95,8 +95,19 @@ function schema_mysql_inspect($name = NULL) {
   $url = parse_url(is_array($db_url) ? $db_url[$active_db_connection] : $db_url);
   $database = substr($url['path'], 1);
 
+  $sql = 'SELECT TABLE_NAME, TABLE_COMMENT
+          FROM information_schema.TABLES
+          WHERE TABLE_SCHEMA="%s" ';
+  if (isset($name)) {
+    $sql .= 'AND TABLE_NAME = "%s" ';
+  }
+  $res = db_query($sql, $database, $name);
+  while ($r = db_fetch_array($res)) {
+    $tables[$r['TABLE_NAME']]['description'] = $r['TABLE_COMMENT'];
+  }
+
   $sql = 'SELECT TABLE_NAME, COLUMN_TYPE, COLUMN_NAME, COLUMN_DEFAULT,
-                 EXTRA, IS_NULLABLE, NUMERIC_SCALE
+                 EXTRA, IS_NULLABLE, NUMERIC_SCALE, COLUMN_COMMENT
           FROM information_schema.COLUMNS
           WHERE TABLE_SCHEMA="%s" ';
   if (isset($name)) {
@@ -139,6 +150,7 @@ function schema_mysql_inspect($name = NULL) {
         $col['default'] = $r['COLUMN_DEFAULT'];
       }
     }
+    $col['description'] = $r['COLUMN_COMMENT'];
     $tables[$r['TABLE_NAME']]['fields'][$r['COLUMN_NAME']] = $col;
     // At this point, $tables is indexed by the raw db table name - save the unprefixed
     // name for later use

@@ -44,9 +44,15 @@ function schema_phpprint_table($name, $table) {
         $index[] = "'$keyname' => ".schema_phpprint_key($key);
       }
     }
+    if ($table['description']) {
+      $description = $table['description'];
+    }
+    else {
+      $description = t('TODO: please describe this table!');
+    }
     $out = '';
     $out .= "\$schema['".$name."'] = array(\n";
-    $out .= "  'description' => t('TODO: please describe this table!'),\n";
+    $out .= "  'description' => t('$description'),\n";
     $out .= "  'fields' => array(\n    ";
     $out .= implode(",\n    ", $cols);
     $out .= ",\n  ),\n";
@@ -69,7 +75,14 @@ function schema_phpprint_table($name, $table) {
 
 function schema_phpprint_column($col, $multiline=FALSE) {
   $attrs = array();
-  $attrs[] = "'description' => t('TODO: please describe this field!')";
+  if ($col['description']) {
+    $description = $col['description'];
+  }
+  else {
+    $description = t('TODO: please describe this field!');
+  }
+  unset($col['description']);
+  $attrs[] = "'description' => t('$description')";
   if ($col['type'] == 'varchar' || $col['size'] == 'normal') {
     unset($col['size']);
   }
