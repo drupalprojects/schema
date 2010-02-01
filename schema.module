@@ -343,8 +343,9 @@ function schema_compare_table($ref, $inspect = NULL) {
     //
     // Sadly, we need a special-case hack for 'serial'.
     $serial = ($col['type'] == 'serial' ? TRUE : FALSE);
-    $dbtype = schema_engine_type($col, $ref['name'], $colname);
-    list($col['type'], $col['size']) = schema_schema_type($dbtype, $ref['name'], $colname);
+    $name = isset($ref['name']) ? $ref['name'] : '';
+    $dbtype = schema_engine_type($col, $name, $colname);
+    list($col['type'], $col['size']) = schema_schema_type($dbtype, $name, $colname);
     if ($serial) {
       $col['type'] = 'serial';
     }
