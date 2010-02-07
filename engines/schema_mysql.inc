@@ -82,41 +82,34 @@ function schema_mysql_create_table_sql($table) {
 function schema_mysql_inspect($name = NULL) {
   global $db_url;
 
-  // Switch to the active database connection.
-  // The only way to get the active connection's name is as a return value from
-  // db_set_active(). However, calling this function will automatically switch
-  // the active connection to 'default', which might not be what we want.
-  // Therefore, we must immediately call db_set_active() again with the desired
-  // connection name in order to proceed.
-  $active_db_connection = db_set_active();
-  db_set_active($active_db_connection);
+  // Get the current database name
+  $info = Database::getConnectionInfo();
+  $database = $info['default']['database'];
 
   $tables = array();
-  $url = parse_url(is_array($db_url) ? $db_url[$active_db_connection] : $db_url);
-  $database = substr($url['path'], 1);
 
   $sql = 'SELECT TABLE_NAME, TABLE_COMMENT
           FROM information_schema.TABLES
-          WHERE TABLE_SCHEMA="%s" ';
+          WHERE TABLE_SCHEMA=:database ';
   if (isset($name)) {
-    $sql .= 'AND TABLE_NAME = "%s" ';
+    $sql .= 'AND TABLE_NAME = :table ';
   }
-  $res = db_query($sql, $database, $name);
-  while ($r = db_fetch_array($res)) {
+  $res = db_query($sql, array(':database' => $database, ':table' => $name));
+  foreach ($res as $r) {
     $tables[$r['TABLE_NAME']]['description'] = $r['TABLE_COMMENT'];
   }
 
   $sql = 'SELECT TABLE_NAME, COLUMN_TYPE, COLUMN_NAME, COLUMN_DEFAULT,
                  EXTRA, IS_NULLABLE, NUMERIC_SCALE, COLUMN_COMMENT
           FROM information_schema.COLUMNS
-          WHERE TABLE_SCHEMA="%s" ';
+          WHERE TABLE_SCHEMA=:database ';
   if (isset($name)) {
-    $sql .= 'AND TABLE_NAME = "%s" ';
+    $sql .= 'AND TABLE_NAME = :table ';
   }
   $sql .= 'ORDER BY TABLE_NAME, ORDINAL_POSITION';
 
-  $res = db_query($sql, $database, $name);
-  while ($r = db_fetch_array($res)) {
+  $res = db_query($sql, array(':database' => $database, ':table' => $name));
+  foreach ($res as $r) {
     $r['NEW_TABLE_NAME'] = schema_unprefix_table($r['TABLE_NAME']);
 
     $numeric = !is_null($r['NUMERIC_SCALE']);
@@ -159,14 +152,14 @@ function schema_mysql_inspect($name = NULL) {
 
   $sql = 'SELECT TABLE_NAME, COLUMN_NAME, INDEX_NAME, SUB_PART, NON_UNIQUE
           FROM information_schema.STATISTICS
-          WHERE TABLE_SCHEMA="%s" ';
+          WHERE TABLE_SCHEMA=:database ';
   if (isset($name)) {
-    $sql .= 'AND TABLE_NAME = "%s" ';
+    $sql .= 'AND TABLE_NAME = :table ';
   }
   $sql .= 'ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX';
 
-  $res = db_query($sql, $database, $name);
-  while ($r = db_fetch_array($res)) {
+  $res = db_query($sql, array(':database' => $database, ':table' => $name));
+  foreach ($res as $r) {
     if (isset($r['SUB_PART']) && !is_null($r['SUB_PART'])) {
       $col = array($r['COLUMN_NAME'], intval($r['SUB_PART']));
     } else {

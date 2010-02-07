@@ -2,5 +2,9 @@
 name = Schema
 description = The Schema module provides functionality built on the Schema API.
 package = Database
-core = 6.x
-
+core = 7.x
+files[] = schema.module
+files[] = schema_util.inc
+files[] = engines/schema_mysql.inc
+files[] = engines/schema_mysqli.inc
+files[] = engines/schema_pgsql.inc

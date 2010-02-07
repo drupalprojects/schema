@@ -461,7 +461,7 @@ function schema_compare_table($ref, $inspect = NULL) {
 //////////////////////////////////////////////////////////////////////
 
 /**
- * Implementation of hook_init().
+ * Implement of hook_init().
  * Perform setup tasks.
  */
 function schema_init() {
@@ -474,6 +474,7 @@ function schema_require() {
     return;
   }
 
+  // TODO: DRUPAL_ROOT?
   $path = drupal_get_path('module', 'schema');
 
   require_once("$path/schema_util.inc");
@@ -518,14 +519,18 @@ function schema_require() {
 }
 
 /**
- * Implementation of hook_perm().
+ * Implement of hook_permission().
  */
-function schema_perm() {
-  return array('administer schema');
+function schema_permission() {
+  return array(
+    'administer schema' => array(
+      'title' => t('Administer schema module'),
+    ),
+  );
 }
 
 /**
- * Implementation of hook_menu().
+ * Implement of hook_menu().
  * Define menu items and page callbacks.
  * admin/build/schema           calls local task(default): schema_report()
  * admin/build/schema/report    calls local task: schema_report()
@@ -621,11 +626,14 @@ function schema_describe() {
   ksort($schema);
   $row_hdrs = array(t('Name'), t('Type[:Size]'), t('Null?'), t('Default'));
 
-  $output = <<<EOT
-<p>This page describes the Drupal database schema.  Click on a table name
+  $form = array();
+  $form['description'] = array(
+    '#prefix' => '<div>',
+    '#markup' => "This page describes the Drupal database schema.  Click on a table name
 to see that table's description and fields.  Table names within a table or
-field description are hyperlinks to that table's description.</p>
-EOT;
+field description are hyperlinks to that table's description.",
+    '#suffix' => '</div>',
+  );
 
   $default_table_description = t('TODO: please describe this table!');
   $default_field_description = t('TODO: please describe this field!');
@@ -663,7 +671,6 @@ EOT;
       drupal_set_message(_schema_process_description(t('Table {!table} has no description.', array('!table' => $t_name))), 'warning');
     }
 
-    $form = array();
     $form[$t_name] = array(
       '#type' => 'fieldset',
       '#title' => t('@table (@module module)',
@@ -672,11 +679,10 @@ EOT;
       '#collapsible' => TRUE,
       '#collapsed' => TRUE,
       '#attributes' => array('id' => 'table-'.$t_name));
-    $form[$t_name]['content'] = array('#value' => theme('table', $row_hdrs, $rows));
-    $output .= drupal_render($form);
+    $form[$t_name]['content'] = array('#markup' => theme('table', $row_hdrs, $rows));
   }
 
-  return $output;
+  return $form;
 }
 
 
@@ -686,6 +692,14 @@ EOT;
  * schema_compare_schemas() into HTML.
  */
 function schema_report() {
+  $form = array();
+  $form['description'] = array(
+    '#prefix' => '<div>',
+    '#markup' => t('This page compares the live database as it currently exists against
+the combination of all schema information provided by all enabled modules'),
+    '#suffix' => '</div>',
+  );
+
   $states = array(
     'same' => t('Match'),
     'different' => t('Mismatch'),
@@ -742,7 +756,7 @@ function schema_report() {
             '#value' => '',
             );
           $form[$module]['content'] = array(
-            '#value' => theme('item_list', $items),
+            '#markup' => theme('item_list', $items),
             );
           $data[$state] .= drupal_render($form);
           break;
@@ -753,7 +767,6 @@ function schema_report() {
     $data['extra'] = theme('item_list', $data['extra']);
   }
 
-  $form = array();
   $weight = 0;
   foreach ($states as $state => $content) {
     $content = (isset($data[$state]) ? $data[$state] : '');
@@ -769,16 +782,10 @@ function schema_report() {
       );
     $form[$state]['content'] = array(
       '#type' => 'markup',
-      '#value' => $content);
+      '#markup' => $content);
   }
 
-  $output = <<<EOT
-<p>This page compares the live database as it currently exists against
-the combination of all schema information provided by all enabled modules.</p>
-EOT;
-
-  $output .= drupal_render($form);
-  return $output;
+  return $form;
 }
 
 
@@ -786,6 +793,19 @@ EOT;
  * "Inspect" menu callback.
  */
 function schema_inspect() {
+  $form = array();
+  $form['description'] = array(
+    '#prefix' => '<div>',
+    '#markup' => t("This page shows the live database schema as it currently
+exists on this system.  Known tables are grouped by the module that
+defines them; unknown tables are all grouped together.</div>
+
+<div>To implement hook_schema() for a module that has existing tables, copy
+the schema structure for those tables directly into the module's
+hook_schema() and return \$schema."),
+    '#suffix' => '</div>',
+  );
+
   $mods = module_list();
   sort($mods);
   $mods = array_flip($mods);
@@ -805,22 +825,10 @@ function schema_inspect() {
     }
     $form[$module][$name] = array(
       '#type' => 'markup',
-      '#value' => '<textarea style="width:100%" rows="10">'.check_plain(schema_phpprint_table($name, $table)).'</textarea>');
+      '#markup' => '<textarea style="width:100%" rows="10">'.check_plain(schema_phpprint_table($name, $table)).'</textarea>');
   }
 
-  $output = <<<EOT
-<p>This page shows the live database schema as it currently
-exists on this system.  Known tables are grouped by the module that
-defines them; unknown tables are all grouped together.</p>
-
-<p>To implement hook_schema() for a module that has existing tables, copy
-the schema structure for those tables directly into the module's
-hook_schema() and return \$schema.</p>
-EOT;
-
-  $output .= drupal_render($form);
-
-  return $output;
+  return $form;
 }
 
 
@@ -872,7 +880,7 @@ EOT;
   return $output;
 }
 
-function schema_settings() {
+function schema_settings($form, &$form_state) {
   global $db_url;
   if(is_array($db_url) && count($db_url) > 1){
     $form['schema_database_connection'] = array(

@@ -40,20 +40,20 @@ function schema_pgsql_inspect($tbl_name = NULL) {
   // added to our array in the same order.
   //
   $sql = ('SELECT * FROM information_schema.COLUMNS '.
-	  'WHERE table_catalog=\'%s\' AND table_schema=current_schema()');
+	  'WHERE table_catalog=:database AND table_schema=current_schema()');
   if (isset($tbl_name)) {
-    $sql .= 'AND table_name = \'%s\' ';
+    $sql .= 'AND table_name = :table ';
   }
   $sql .= 'ORDER BY table_name, ordinal_position';
-  
-  $res = db_query($sql, $database, $tbl_name);
+
+  $res = db_query($sql, array(':database' => $database, ':table' => $tbl_name));
 
   //
   // Add an entry to $tables[<tablename>]['fields'] for each column.  $r
   // is a row from information_schema.columns.  $col is the Schema
   // column structure we build up from it.
   //
-  while ($r = db_fetch_array($res)) {
+  foreach ($res as $r) {
     $col = array();
 
     $r['new_table_name'] = schema_unprefix_table($r['table_name']);
@@ -93,7 +93,7 @@ function schema_pgsql_inspect($tbl_name = NULL) {
         $col['default'] = $r['column_default'];
         $def_type = '';
       }
-      
+
       if ($numeric) {
         // $col['default'] is currently a string.  If the column is
         // numeric, use intval() or floatval() to extract the value as a
@@ -107,7 +107,7 @@ function schema_pgsql_inspect($tbl_name = NULL) {
           $def_type == 'regclass)') {
           $col['type'] = 'serial';
           unset($col['default']);
-        } 
+        }
         else if ($col['type'] == 'float') {
           $col['default'] = floatval($col['default']);
         } else {
@@ -148,11 +148,11 @@ function schema_pgsql_inspect($tbl_name = NULL) {
   // Make sur we caught all the unsigned columns.  I could not get
   // this to work as a left join on the previous query.
   //
-  $res = db_query('SELECT ccu.*, cc.check_clause 
-                   FROM information_schema.constraint_column_usage ccu 
-                   INNER JOIN information_schema.check_constraints cc ON ccu.constraint_name=cc.constraint_name 
+  $res = db_query('SELECT ccu.*, cc.check_clause
+                   FROM information_schema.constraint_column_usage ccu
+                   INNER JOIN information_schema.check_constraints cc ON ccu.constraint_name=cc.constraint_name
                    WHERE table_schema=current_schema()');
-  while ($r = db_fetch_array($res)) {
+  foreach ($res as $r) {
     $r['table_name'] = schema_unprefix_table($r['table_name']);
 
     if ($r['check_clause'] == '(('. $r['column_name'] .' >= 0))' ||
@@ -175,7 +175,7 @@ function schema_pgsql_inspect($tbl_name = NULL) {
     'WHERE c.oid = i.indrelid AND i.indexrelid = c2.oid AND '.
     '      c.relnamespace=n.oid AND n.nspname=current_schema() '.
     'ORDER BY c2.relname');
-  while ($r = db_fetch_array($res)) {
+  foreach ($res as $r) {
     $r['tblname'] = schema_unprefix_table($r['tblname']);
     $r['indname'] = schema_unprefix_table($r['indname']);
 
@@ -202,13 +202,13 @@ function schema_pgsql_inspect($tbl_name = NULL) {
           $tables[$r['tblname']]['indexes'][$name][] = $key;
         }
       }
-    } 
+    }
     else {
       watchdog('schema', 'unrecognized pgsql index definition: @stmt',
         array('@stmt' => $r['inddef']));
     }
   }
-  
+
   // Now, for tables which we have unprefixed, index $tables by the unprefixed name
   foreach ($tables as $tablename => $table) {
     $newname = $tables[$tablename]['name'];

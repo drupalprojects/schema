@@ -1,6 +1,11 @@
 <?php
 
 /**
+* @file
+* Install, update and uninstall functions for the schema module.
+*/
+
+/**
  * Implementation of hook_requirements().
  * Checks installation requirements and do status reporting.
  * @param phase 'install': ignored (no installation requirements)
