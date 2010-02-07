@@ -540,14 +540,14 @@ function schema_permission() {
  * admin/build/schema/show      calls local task: schema_show()
  */
 function schema_menu() {
-  $items['admin/build/schema'] = array(
+  $items['admin/structure/schema'] = array(
     'title' => 'Schema',
     'description' => 'Manage the database schema for this system.',
     'page callback' => 'schema_report',
     'access arguments' => array('administer schema'),
     );
 
-  $items['admin/build/schema/report'] = array(
+  $items['admin/structure/schema/report'] = array(
     'title' => 'Compare',
     'type' => MENU_DEFAULT_LOCAL_TASK,
     'page callback' => 'schema_report',
@@ -555,7 +555,7 @@ function schema_menu() {
     'access arguments' => array('administer schema'),
     );
 
-  $items['admin/build/schema/describe'] = array(
+  $items['admin/structure/schema/describe'] = array(
     'title' => 'Describe',
     'type' => MENU_LOCAL_TASK,
     'page callback' => 'schema_describe',
@@ -563,7 +563,7 @@ function schema_menu() {
     'access arguments' => array('administer schema'),
     );
 
-  $items['admin/build/schema/inspect'] = array(
+  $items['admin/structure/schema/inspect'] = array(
     'title' => 'Inspect',
     'type' => MENU_LOCAL_TASK,
     'page callback' => 'schema_inspect',
@@ -571,7 +571,7 @@ function schema_menu() {
     'access arguments' => array('administer schema'),
     );
 
-  $items['admin/build/schema/sql'] = array(
+  $items['admin/structure/schema/sql'] = array(
     'title' => 'SQL',
     'type' => MENU_LOCAL_TASK,
     'page callback' => 'schema_sql',
@@ -583,7 +583,7 @@ function schema_menu() {
   global $db_type, $schema_engines;
   if (FALSE && isset($schema_engines) && is_array($schema_engines)) {
     foreach ($schema_engines as $engine) {
-      $items['admin/build/schema/sql/'.$engine] = array(
+      $items['admin/structure/schema/sql/'.$engine] = array(
         'title' => t($engine),
         'type' => ($engine == $db_type ? MENU_DEFAULT_LOCAL_TASK :
           MENU_LOCAL_TASK),
@@ -594,7 +594,7 @@ function schema_menu() {
     }
   }
 
-  $items['admin/build/schema/show'] = array(
+  $items['admin/structure/schema/show'] = array(
     'title' => 'Show',
     'type' => MENU_LOCAL_TASK,
     'page callback' => 'schema_show',
@@ -602,7 +602,7 @@ function schema_menu() {
     'access arguments' => array('administer schema'),
     );
 
-  $items['admin/build/schema/settings'] = array(
+  $items['admin/structure/schema/settings'] = array(
     'title' => 'Settings',
     'type' => MENU_LOCAL_TASK,
     'page callback' => 'drupal_get_form',
