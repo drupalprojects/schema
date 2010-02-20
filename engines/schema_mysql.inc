@@ -1,6 +1,16 @@
 <?php
 // $Id$
 
+/**
+ * @file
+ * MySQL implementation of schema module hooks.
+ *
+ */
+
+/**
+ *
+ * @return unknown_type
+ */
 function schema_mysql_engine_type_map() {
   $map = db_type_map();
   return $map;
@@ -17,13 +27,13 @@ function schema_mysql_schema_type_map() {
 function schema_mysql_create_table_sql($table) {
   $sql_cols = array();
   foreach ($table['fields'] as $colname => $col) {
-    $sql = $colname.' '.schema_engine_type($col, 'mysql');
+    $sql = $colname . ' ' . schema_engine_type($col, 'mysql');
     if (isset($col['unsigned']) && $col['unsigned']) {
       $sql .= ' UNSIGNED';
     }
     unset($col['unsigned']);
     if (isset($col['length']) && $col['length']) {
-      $sql .= '('.$col['length'].')';
+      $sql .= '(' . $col['length'] . ')';
     }
     if (isset($col['type']) && $col['type'] == 'serial') {
       $sql .= ' AUTO_INCREMENT';
@@ -41,7 +51,8 @@ function schema_mysql_create_table_sql($table) {
           $sql .= " $prop ";
           if (is_string($val)) {
             $sql .= "'$val'";
-          } else {
+          }
+          else {
             $sql .= $val;
           }
           break;
@@ -52,7 +63,7 @@ function schema_mysql_create_table_sql($table) {
 
   $sql_keys = array();
   if (is_array($table['primary key'])) {
-    $sql_keys[] = 'PRIMARY KEY ('.implode(', ', $table['primary key']).')';
+    $sql_keys[] = 'PRIMARY KEY (' . implode(', ', $table['primary key']) . ')';
   }
   foreach (array('unique keys', 'indexes') as $type) {
     if (isset($table[$type]) && is_array($table[$type])) {
@@ -61,14 +72,14 @@ function schema_mysql_create_table_sql($table) {
         if ($type == 'unique keys') {
             $sql = 'UNIQUE ';
         }
-        $sql .= 'KEY '.$keyname.' ';
-        $sql .= '('.implode(', ', $key).')';
+        $sql .= 'KEY ' . $keyname . ' ';
+        $sql .= '(' . implode(', ', $key) . ')';
         $sql_keys[] = $sql;
       }
     }
   }
 
-  $sql = "CREATE TABLE {".$table['name']."} (\n\t";
+  $sql = "CREATE TABLE {" . $table['name'] . "} (\n\t";
   $sql .= implode(",\n\t", $sql_cols);
   if (count($sql_keys) > 0) {
     $sql .= ",\n\t";
@@ -87,42 +98,43 @@ function schema_mysql_inspect($name = NULL) {
   $database = $info['default']['database'];
 
   $tables = array();
-
-  $sql = 'SELECT TABLE_NAME, TABLE_COMMENT
-          FROM information_schema.TABLES
-          WHERE TABLE_SCHEMA=:database ';
+  $args = array(':database' => $database);
+  $sql = 'SELECT table_name, table_comment
+          FROM information_schema.tables
+          WHERE table_schema=:database ';
   if (isset($name)) {
-    $sql .= 'AND TABLE_NAME = :table ';
+    $sql .= 'AND table_name = :table ';
+    $args[':table'] = $name;
   }
-  $res = db_query($sql, array(':database' => $database, ':table' => $name));
+  $res = db_query($sql, $args);
   foreach ($res as $r) {
-    $tables[$r['TABLE_NAME']]['description'] = $r['TABLE_COMMENT'];
+    $tables[$r->table_name]['description'] = $r->table_comment;
   }
 
-  $sql = 'SELECT TABLE_NAME, COLUMN_TYPE, COLUMN_NAME, COLUMN_DEFAULT,
-                 EXTRA, IS_NULLABLE, NUMERIC_SCALE, COLUMN_COMMENT
-          FROM information_schema.COLUMNS
-          WHERE TABLE_SCHEMA=:database ';
+  $sql = 'SELECT table_name, column_type, column_name, column_default,
+                 extra, is_nullable, numeric_scale, column_comment
+          FROM information_schema.columns
+          WHERE table_schema=:database ';
   if (isset($name)) {
-    $sql .= 'AND TABLE_NAME = :table ';
+    $sql .= 'AND table_name = :table ';
   }
-  $sql .= 'ORDER BY TABLE_NAME, ORDINAL_POSITION';
+  $sql .= 'ORDER BY table_name, ordinal_position';
 
-  $res = db_query($sql, array(':database' => $database, ':table' => $name));
+  $res = db_query($sql, $args);
   foreach ($res as $r) {
-    $r['NEW_TABLE_NAME'] = schema_unprefix_table($r['TABLE_NAME']);
+    $r->new_table_name = schema_unprefix_table($r->table_name);
 
-    $numeric = !is_null($r['NUMERIC_SCALE']);
+    $numeric = !is_null($r->numeric_scale);
     $col = array();
-    $col['type'] = $r['COLUMN_TYPE'];
+    $col['type'] = $r->column_type;
     if (preg_match('@([a-z]+)(?:\((\d+)(?:,(\d+))?\))?\s*(unsigned)?@', $col['type'], $matches)) {
-      list($col['type'], $col['size']) = schema_schema_type($matches[1], $r['TABLE_NAME'], $r['COLUMN_NAME'], 'mysql');
+      list($col['type'], $col['size']) = schema_schema_type($matches[1], $r->table_name, $r->column_name, 'mysql');
       if (isset($matches[2])) {
         if ($col['type'] == 'numeric' || $col['type'] == 'float' || $col['type'] == 'double') {
           $col['precision'] = $matches[2];
           $col['scale'] = $matches[3];
         }
-        else if (!$numeric) {
+        elseif (!$numeric) {
           $col['length'] = $matches[2];
         }
       }
@@ -130,51 +142,55 @@ function schema_mysql_inspect($name = NULL) {
         $col['unsigned'] = TRUE;
       }
     }
-    if ($col['type'] == 'int' && isset($r['EXTRA']) &&
-      $r['EXTRA'] == 'auto_increment') {
+    if ($col['type'] == 'int' && isset($r->extra) &&
+        $r->extra == 'auto_increment') {
       $col['type'] = 'serial';
     }
-    $col['not null'] = ($r['IS_NULLABLE'] == 'YES' ? FALSE : TRUE);
-    if (! is_null($r['COLUMN_DEFAULT'])) {
+    $col['not null'] = ($r->is_nullable == 'YES' ? FALSE : TRUE);
+    if (! is_null($r->column_default)) {
       if ($numeric) {
         // XXX floats!
-        $col['default'] = intval($r['COLUMN_DEFAULT']);
-      } else {
-        $col['default'] = $r['COLUMN_DEFAULT'];
+        $col['default'] = intval($r->column_default);
+      }
+      else {
+        $col['default'] = $r->column_default;
       }
     }
-    $col['description'] = $r['COLUMN_COMMENT'];
-    $tables[$r['TABLE_NAME']]['fields'][$r['COLUMN_NAME']] = $col;
+    $col['description'] = $r->column_comment;
+    $tables[$r->table_name]['fields'][$r->column_name] = $col;
     // At this point, $tables is indexed by the raw db table name - save the unprefixed
     // name for later use
-    $tables[$r['TABLE_NAME']]['name'] = $r['NEW_TABLE_NAME'];
+    $tables[$r->table_name]['name'] = $r->new_table_name;
   }
 
-  $sql = 'SELECT TABLE_NAME, COLUMN_NAME, INDEX_NAME, SUB_PART, NON_UNIQUE
-          FROM information_schema.STATISTICS
-          WHERE TABLE_SCHEMA=:database ';
+  $sql = 'SELECT table_name, column_name, index_name, sub_part, non_unique
+          FROM information_schema.statistics
+          WHERE table_schema=:database ';
   if (isset($name)) {
-    $sql .= 'AND TABLE_NAME = :table ';
+    $sql .= 'AND table_name = :table ';
   }
-  $sql .= 'ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX';
+  $sql .= 'ORDER BY table_name, index_name, seq_in_index';
 
-  $res = db_query($sql, array(':database' => $database, ':table' => $name));
+  $res = db_query($sql, $args);
   foreach ($res as $r) {
-    if (isset($r['SUB_PART']) && !is_null($r['SUB_PART'])) {
-      $col = array($r['COLUMN_NAME'], intval($r['SUB_PART']));
-    } else {
-      $col = $r['COLUMN_NAME'];
+    if (isset($r->sub_part) && !is_null($r->sub_part)) {
+      $col = array($r->column_name, intval($r->sub_part));
     }
-    if ($r['INDEX_NAME'] == 'PRIMARY') {
+    else {
+      $col = $r->column_name;
+    }
+    if ($r->index_name == 'PRIMARY') {
       $type = 'primary key';
-      $tables[$r['TABLE_NAME']][$type][] = $col;
+      $tables[$r->table_name][$type][] = $col;
       continue;
-    } else if ($r['NON_UNIQUE'] == 0) {
+    }
+    elseif ($r->non_unique == 0) {
       $type = 'unique keys';
-    } else {
+    }
+    else {
       $type = 'indexes';
     }
-    $tables[$r['TABLE_NAME']][$type][$r['INDEX_NAME']][] = $col;
+    $tables[$r->table_name][$type][$r->index_name][] = $col;
   }
 
   // Now, for tables which we have unprefixed, index $tables by the unprefixed name

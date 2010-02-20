@@ -1,6 +1,12 @@
 <?php
 // $Id$
 
+/**
+ * @file
+ * Postgres implementation of schema module hooks.
+ *
+ */
+
 function schema_pgsql_engine_type_map() {
   $map = db_type_map(); // sigh
   return $map;
@@ -39,8 +45,8 @@ function schema_pgsql_inspect($tbl_name = NULL) {
   // We sort the columns by table_name and ordinal_position so the get
   // added to our array in the same order.
   //
-  $sql = ('SELECT * FROM information_schema.COLUMNS '.
-	  'WHERE table_catalog=:database AND table_schema=current_schema()');
+  $sql = ('SELECT * FROM information_schema.COLUMNS ' .
+          'WHERE table_catalog=:database AND table_schema=current_schema()');
   if (isset($tbl_name)) {
     $sql .= 'AND table_name = :table ';
   }
@@ -89,7 +95,8 @@ function schema_pgsql_inspect($tbl_name = NULL) {
       // just splitting out the actual default value.
       if (strpos($r['column_default'], '::') !== FALSE) {
         list($col['default'], $def_type) = explode('::', $r['column_default']);
-      } else {
+      }
+      else {
         $col['default'] = $r['column_default'];
         $def_type = '';
       }
@@ -104,16 +111,18 @@ function schema_pgsql_inspect($tbl_name = NULL) {
 
         // more pgsql-specific stuff
         if (strpos($col['default'], 'nextval(\'') !== FALSE &&
-          $def_type == 'regclass)') {
+            $def_type == 'regclass)') {
           $col['type'] = 'serial';
           unset($col['default']);
         }
-        else if ($col['type'] == 'float') {
+        elseif ($col['type'] == 'float') {
           $col['default'] = floatval($col['default']);
-        } else {
+        }
+        else {
           $col['default'] = intval($col['default']);
         }
-      } else {
+      }
+      else {
         // The column is not numeric, so $col['default'] should remain
         // a string.  However, pgsql returns $r['column_default']
         // wrapped in single-quotes.  We just want the string value,
@@ -133,7 +142,7 @@ function schema_pgsql_inspect($tbl_name = NULL) {
         $col['unsigned'] = 1;
         break;
     }
-    if (isset($r['check_clause']) && $r['check_clause'] == '(('. $r['column_name'] .' => 0))') {
+    if (isset($r['check_clause']) && $r['check_clause'] == '((' . $r['column_name'] . ' => 0))') {
       $col['unsigned'] = 1;
     }
 
@@ -155,9 +164,9 @@ function schema_pgsql_inspect($tbl_name = NULL) {
   foreach ($res as $r) {
     $r['table_name'] = schema_unprefix_table($r['table_name']);
 
-    if ($r['check_clause'] == '(('. $r['column_name'] .' >= 0))' ||
-      $r['check_clause'] == '(('. $r['column_name'] .' >= (0)::numeric))') {
-      $tables[$r['table_name']]['fields'][$r['column_name']]['unsigned'] =TRUE;
+    if ($r['check_clause'] == '((' . $r['column_name'] . ' >= 0))' ||
+        $r['check_clause'] == '((' . $r['column_name'] . ' >= (0)::numeric))') {
+      $tables[$r['table_name']]['fields'][$r['column_name']]['unsigned'] = TRUE;
     }
   }
 
@@ -168,12 +177,12 @@ function schema_pgsql_inspect($tbl_name = NULL) {
   // the CREATE INDEX statement to create the index; we parse it to
   // produce our data structure.  Ick.
   //
-  $res = db_query('SELECT n.nspname, c.relname AS tblname, '.
-    '   c2.relname AS indname, i.indisprimary, i.indisunique, '.
-    '   pg_get_indexdef(i.indexrelid) AS inddef '.
-    'FROM pg_class c, pg_class c2, pg_index i, pg_namespace n '.
-    'WHERE c.oid = i.indrelid AND i.indexrelid = c2.oid AND '.
-    '      c.relnamespace=n.oid AND n.nspname=current_schema() '.
+  $res = db_query('SELECT n.nspname, c.relname AS tblname, ' .
+    '   c2.relname AS indname, i.indisprimary, i.indisunique, ' .
+    '   pg_get_indexdef(i.indexrelid) AS inddef ' .
+    'FROM pg_class c, pg_class c2, pg_index i, pg_namespace n ' .
+    'WHERE c.oid = i.indrelid AND i.indexrelid = c2.oid AND ' .
+    '      c.relnamespace=n.oid AND n.nspname=current_schema() ' .
     'ORDER BY c2.relname');
   foreach ($res as $r) {
     $r['tblname'] = schema_unprefix_table($r['tblname']);
@@ -183,7 +192,7 @@ function schema_pgsql_inspect($tbl_name = NULL) {
       list($all, $table, $keys) = $m;
 
       $name = $r['indname'];
-      if (preg_match('@^'.$r['tblname'].'_(.*)_(?:idx|key)$@', $name, $m)) {
+      if (preg_match('@^' . $r['tblname'] . '_(.*)_(?:idx|key)$@', $name, $m)) {
         $name = $m[1];
       }
 
@@ -191,14 +200,17 @@ function schema_pgsql_inspect($tbl_name = NULL) {
       foreach ($m[1] as $idx => $colname) {
         if ($m[2][$idx]) {
           $key = array($m[2][$idx], intval($m[3][$idx]));
-        } else {
+        }
+        else {
           $key = str_replace('"', '', $colname);
         }
         if ($r['indisprimary'] == 't') {
           $tables[$r['tblname']]['primary key'][] = $key;
-        } else if ($r['indisunique'] == 't') {
+        }
+        elseif ($r['indisunique'] == 't') {
           $tables[$r['tblname']]['unique keys'][$name][] = $key;
-        } else {
+        }
+        else {
           $tables[$r['tblname']]['indexes'][$name][] = $key;
         }
       }

@@ -1,4 +1,5 @@
 <?php
+// $Id$
 
 /**
 * @file
@@ -45,7 +46,8 @@ function schema_requirements($phase) {
       $sys_reqs = system_requirements($phase);
       if ($sys_reqs['update']['severity'] != REQUIREMENT_OK) {
         $desc .= $t('You should follow the instructions under <strong>@title</strong> now or run the <a href="@compare">database schema comparison report</a> for more details.', array('@title' => $sys_reqs['update']['title'], '@compare' => url('admin/build/schema/compare')));
-      } else {
+      }
+      else {
         $desc .= $t('The <a href="@compare">database schema comparison report</a> provides more details.', array('@compare' => url('admin/build/schema/compare')));
       }
     }
