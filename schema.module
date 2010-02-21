@@ -689,7 +689,8 @@ field description are hyperlinks to that table's description.",
       '#collapsible' => TRUE,
       '#collapsed' => TRUE,
       '#attributes' => array('id' => 'table-' . $t_name));
-    $form[$t_name]['content'] = array('#markup' => theme('table', $row_hdrs, $rows));
+    $form[$t_name]['content'] = array('#markup' => theme('table',
+      array('header' => $row_hdrs, 'rows' => $rows)));
   }
 
   return $form;
@@ -747,12 +748,14 @@ the combination of all schema information provided by all enabled modules'),
       switch ($state) {
         case 'same':
         case 'missing':
+          // TODO: Fix theme call
           $data[$state] .= theme('item_list', array_keys($tables), $module);
           break;
 
         case 'different':
           $items = array();
           foreach ($tables as $name => $stuff) {
+            // TODO: Fix theme call
             $items[] = "<h4>$name</h4>" . theme('item_list',
               array_merge($tables[$name]['reasons'], $tables[$name]['notes']));
           }
@@ -766,6 +769,7 @@ the combination of all schema information provided by all enabled modules'),
             '#value' => '',
             );
           $form[$module]['content'] = array(
+            // TODO: Fix theme call
             '#markup' => theme('item_list', $items),
             );
           $data[$state] .= drupal_render($form);
@@ -774,6 +778,7 @@ the combination of all schema information provided by all enabled modules'),
     }
   }
   if (isset($data['extra'])) {
+    // TODO: Fix theme call
     $data['extra'] = theme('item_list', $data['extra']);
   }
 
