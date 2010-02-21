@@ -166,17 +166,9 @@ function schema_unprefix_table($name) {
   return $name;
 }
 
-/**
- * Retrieve the database type ('mysql', 'pgsql', etc.) for the active connection.
- * @return string
- */
-function schema_dbtype() {
-  return Database::getConnection()->databaseType();
-}
-
 function schema_dbobject() {
   static $engines = array();
-  $class_name = 'SchemaDatabaseSchema_' . schema_dbtype();
+  $class_name = 'SchemaDatabaseSchema_' . db_driver();
   if (!isset($engines[$class_name])) {
     $db_key = variable_get('schema_database_connection', 'default');
     if ($db_key !== 'default') {
@@ -201,7 +193,7 @@ function schema_invoke($op) {
   // TODO: Remove when includes are all class-based
   schema_require();
 
-  $function = 'schema_' . schema_dbtype() . '_' . $op;
+  $function = 'schema_' . db_driver() . '_' . $op;
   $args = func_get_args();
   array_shift($args);
   $return = call_user_func_array($function, $args);
@@ -214,7 +206,7 @@ function schema_invoke($op) {
 // TODO: Eliminate in favor of invoking appropriate class
 function schema_engine_invoke($engine, $op) {
   if (!isset($engine)) {
-    $engine = schema_dbtype();
+    $engine = db_driver();
   }
   $function = 'schema_' . $engine . '_' . $op;
   $args = func_get_args();
@@ -361,8 +353,7 @@ function schema_compare_schemas($ref, $inspect = NULL) {
  * @param $inspect if not provided, the database is inspected.
  */
 function schema_compare_table($ref, $inspect = NULL) {
-  global $db_type;
-  $_db_type = $db_type;
+  $_db_type = db_driver();
   if ($_db_type == 'mysqli') {
     $_db_type = 'mysql';
   }
@@ -517,7 +508,7 @@ function schema_require() {
 
   global $_schema_engines;
   $connection = Database::getConnection();
-  $db_type = $connection->databaseType();
+  $db_type = db_driver();
   if (!isset($db_type)) {
     return;
   }
@@ -598,12 +589,12 @@ function schema_menu() {
     );
 
   // This can't work unless we rename the functions in database.*.inc.
-  global $db_type, $_schema_engines;
+  global $_schema_engines;
   if (FALSE && isset($_schema_engines) && is_array($_schema_engines)) {
     foreach ($_schema_engines as $engine) {
       $items['admin/structure/schema/sql/' . $engine] = array(
         'title' => $engine,
-        'type' => ($engine == $db_type ? MENU_DEFAULT_LOCAL_TASK :
+        'type' => ($engine == db_driver() ? MENU_DEFAULT_LOCAL_TASK :
           MENU_LOCAL_TASK),
         'page callback' => 'schema_sql',
         'callback arguments' => $engine,
@@ -859,28 +850,24 @@ function schema_sql($engine = NULL) {
   $schema = drupal_get_schema(NULL, TRUE);
   $connection = Database::getConnection();
   $sql = '';
-    foreach ($schema as $name => $table) {
-      if (substr($name, 0, 1) == '#') {
-        continue;
-      }
-      if ($engine) {
-        $stmts = call_user_func('schema_' . $engine . '_create_table_sql', $table);
-      }
-      else {
-        // TODO: Protected method - submit patch to make public
-        // TODO: Better yet, extend DatabaseSchema for our needs
-        $stmts = $connection->schema()->createTableSql($name, $table);
-      }
-
-      $sql .= implode(";\n", $stmts) . ";\n\n";
+  foreach ($schema as $name => $table) {
+    if (substr($name, 0, 1) == '#') {
+      continue;
+    }
+    if ($engine) {
+      $stmts = call_user_func('schema_' . $engine . '_create_table_sql', $table);
+    }
+    else {
+      $stmts = schema_dbobject()->getCreateTableSql($name, $table);
     }
 
-  $output = <<<EOT
-<p>This page shows the CREATE TABLE statements that the Schema module
-generates for the selected database engine for each table defined by a
-module.  It is for debugging purposes.</p>
-<textarea style="width:100%" rows="30">$sql</textarea>
-EOT;
+    $sql .= implode(";\n", $stmts) . ";\n\n";
+  }
+
+  $output = t('<p>This page shows the CREATE TABLE statements that the Schema module
+               generates for the selected database engine for each table defined by a
+               module.  It is for debugging purposes.</p>');
+  $output .= "<textarea style=\"width:100%\" rows=\"30\">$sql</textarea>";
 
   return $output;
 }
@@ -894,12 +881,10 @@ function schema_show() {
   $schema = drupal_get_schema(NULL, TRUE);
   $show = var_export($schema, 1);
 
-  $output = <<<EOT
-<p>This page displays the Drupal database schema data structure.  It is for
-debugging purposes.</p>
+  $output = t('<p>This page displays the Drupal database schema data structure.  It is for
+    debugging purposes.</p>');
 
-<textarea style="width:100%" rows="30">$show</textarea>
-EOT;
+  $output .= "<textarea style=\"width:100%\" rows=\"30\">$show</textarea>";
 
   return $output;
 }
