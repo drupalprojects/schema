@@ -844,13 +844,12 @@ function schema_inspect() {
         '#weight' => ($module == 'Unknown' ? 0 : $mods[$module]+1),
       );
     }
-/*    $form[$module][$name] = array(
+    $form[$module][$name] = array(
       '#type' => 'markup',
       '#markup' => '<textarea style="width:100%" rows="10">' .
-          check_plain(schema_phpprint_table($name, $table)) . '</textarea>');*/
-    break;
+          check_plain(schema_phpprint_table($name, $table)) . '</textarea>');
   }
-dpm($form);
+
   return $form;
 }
 
