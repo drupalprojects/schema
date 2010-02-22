@@ -567,7 +567,8 @@ function schema_menu() {
   $items['admin/structure/schema/describe'] = array(
     'title' => 'Describe',
     'type' => MENU_LOCAL_TASK,
-    'page callback' => 'schema_describe',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('schema_describe'),
     'weight' => -8,
     'access arguments' => array('administer schema'),
     );
@@ -575,7 +576,8 @@ function schema_menu() {
   $items['admin/structure/schema/inspect'] = array(
     'title' => 'Inspect',
     'type' => MENU_LOCAL_TASK,
-    'page callback' => 'schema_inspect',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('schema_inspect'),
     'weight' => -6,
     'access arguments' => array('administer schema'),
     );
@@ -688,9 +690,13 @@ field description are hyperlinks to that table's description.",
       '#description' => !empty($t_spec['description']) ? _schema_process_description($t_spec['description']) : '',
       '#collapsible' => TRUE,
       '#collapsed' => TRUE,
-      '#attributes' => array('id' => 'table-' . $t_name));
-    $form[$t_name]['content'] = array('#markup' => theme('table',
-      array('header' => $row_hdrs, 'rows' => $rows)));
+      '#attributes' => array('id' => 'table-' . $t_name),
+    );
+    $form[$t_name]['content'] = array(
+      '#prefix' => '<div>',
+      '#markup' => theme('table', array('header' => $row_hdrs, 'rows' => $rows)),
+      '#postfix' => '</div>',
+    );
   }
 
   return $form;
@@ -812,12 +818,12 @@ function schema_inspect() {
   $form['description'] = array(
     '#prefix' => '<div>',
     '#markup' => t("This page shows the live database schema as it currently
-exists on this system.  Known tables are grouped by the module that
-defines them; unknown tables are all grouped together.</div>
+      exists on this system.  Known tables are grouped by the module that
+      defines them; unknown tables are all grouped together.</div>
 
-<div>To implement hook_schema() for a module that has existing tables, copy
-the schema structure for those tables directly into the module's
-hook_schema() and return \$schema."),
+      <div>To implement hook_schema() for a module that has existing tables, copy
+      the schema structure for those tables directly into the module's
+      hook_schema() and return \$schema."),
     '#suffix' => '</div>',
   );
 
@@ -825,7 +831,7 @@ hook_schema() and return \$schema."),
   sort($mods);
   $mods = array_flip($mods);
   $schema = drupal_get_schema(NULL, TRUE);
-  $inspect = schema_invoke('inspect');
+  $inspect = schema_dbobject()->inspect();
   foreach ($inspect as $name => $table) {
     $module = isset($schema[$name]['module']) ? $schema[$name]['module'] : 'Unknown';
     if (!isset($form[$module])) {
@@ -836,14 +842,15 @@ hook_schema() and return \$schema."),
         '#collapsible' => TRUE,
         '#collapsed' => ($module != 'Unknown'),
         '#weight' => ($module == 'Unknown' ? 0 : $mods[$module]+1),
-        '#value' => '');
+      );
     }
-    $form[$module][$name] = array(
+/*    $form[$module][$name] = array(
       '#type' => 'markup',
       '#markup' => '<textarea style="width:100%" rows="10">' .
-          check_plain(schema_phpprint_table($name, $table)) . '</textarea>');
+          check_plain(schema_phpprint_table($name, $table)) . '</textarea>');*/
+    break;
   }
-
+dpm($form);
   return $form;
 }
 
