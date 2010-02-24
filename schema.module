@@ -257,7 +257,7 @@ function schema_schema_type($type, $table, $field, $engine = NULL) {
  */
 function schema_compare_schemas($ref, $inspect = NULL) {
   if (!isset($inspect)) {
-    $inspect = schema_invoke('inspect');
+    $inspect = schema_dbobject()->inspect();
   }
 
   $info = array();
@@ -552,14 +552,16 @@ function schema_menu() {
   $items['admin/structure/schema'] = array(
     'title' => 'Schema',
     'description' => 'Manage the database schema for this system.',
-    'page callback' => 'schema_report',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('schema_report'),
     'access arguments' => array('administer schema'),
     );
 
   $items['admin/structure/schema/report'] = array(
     'title' => 'Compare',
     'type' => MENU_DEFAULT_LOCAL_TASK,
-    'page callback' => 'schema_report',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('schema_report'),
     'weight' => -10,
     'access arguments' => array('administer schema'),
     );
@@ -695,7 +697,7 @@ field description are hyperlinks to that table's description.",
     $form[$t_name]['content'] = array(
       '#prefix' => '<div>',
       '#markup' => theme('table', array('header' => $row_hdrs, 'rows' => $rows)),
-      '#postfix' => '</div>',
+      '#suffix' => '</div>',
     );
   }
 
@@ -713,7 +715,7 @@ function schema_report() {
   $form['description'] = array(
     '#prefix' => '<div>',
     '#markup' => t('This page compares the live database as it currently exists against
-the combination of all schema information provided by all enabled modules'),
+          the combination of all schema information provided by all enabled modules'),
     '#suffix' => '</div>',
   );
 
@@ -799,11 +801,13 @@ the combination of all schema information provided by all enabled modules'),
       '#collapsible' => TRUE,
       '#collapsed' => TRUE,
       '#weight' => $weight++,
-      '#value' => '',
       );
     $form[$state]['content'] = array(
       '#type' => 'markup',
-      '#markup' => $content);
+      '#prefix' => '<div>',
+      '#markup' => $content,
+      '#suffix' => '</div>',
+    );
   }
 
   return $form;
