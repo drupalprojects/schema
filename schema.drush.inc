@@ -18,6 +18,9 @@ function schema_drush_command() {
     'arguments' => array(
       'tables' => 'A comma delimited list of table names',
     ),
+    'options' => array(
+      'connection' => 'An alternate connection key to inspect',
+    ),
   );
   return $items;
 }
@@ -35,11 +38,15 @@ function schema_drush_help($section) {
 /**
  * A drush command callback.
  */
-function drush_schema_schema_inspect() {
+function drush_schema_inspect() {
   $args = func_get_args();
   $names = explode(',', $args[0]);
+  $connection = drush_get_option('connection');
+  if (!$connection) {
+    $connection = 'default';
+  }
   foreach ($names as $name) {
-    if ($table = schema_invoke('inspect', $name)) {
+    if ($table = schema_dbobject()->inspect($connection, $name)) {
       $output = schema_phpprint_table($name, $table[$name]);
       drush_print($output);
     }

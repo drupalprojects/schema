@@ -21,9 +21,17 @@ class SchemaDatabaseSchema_mysql extends DatabaseSchema_mysql {
     return parent::createTableSql($name, $table);
   }
 
-  public function inspect($name = NULL) {
+  public function schema_type_map() {
+    static $map;
+    if (!isset($map)) {
+      $map = array_flip(array_map('strtolower', $this->getFieldTypeMap()));
+    }
+    return $map;
+  }
+
+  public function inspect($connection = 'default', $name = NULL) {
     // Get the current database name
-    $info = Database::getConnectionInfo();
+    $info = Database::getConnectionInfo($connection);
     $database = $info['default']['database'];
 
     $tables = array();

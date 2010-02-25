@@ -170,55 +170,16 @@ function schema_dbobject() {
   static $engines = array();
   $class_name = 'SchemaDatabaseSchema_' . db_driver();
   if (!isset($engines[$class_name])) {
-    $db_key = variable_get('schema_database_connection', 'default');
-    if ($db_key !== 'default') {
-      db_set_active($db_key);
-    }
     $engines[$class_name] = new $class_name(Database::getConnection());
-    if ($db_key !== 'default') {
-      db_set_active('default');
-    }
   }
   return $engines[$class_name];
-}
-
-// TODO: Eliminate in favor of schema_dbobject()->$op
-function schema_invoke($op) {
-  $db_key = variable_get('schema_database_connection', 'default');
-  if ($db_key !== 'default') {
-    db_set_active($db_key);
-  }
-  // We could be called by other modules (notably Table Wizard or Migrate) in an update
-  // function, which does not call hook_init(). So, make sure we get our include files included...
-  // TODO: Remove when includes are all class-based
-  schema_require();
-
-  $function = 'schema_' . db_driver() . '_' . $op;
-  $args = func_get_args();
-  array_shift($args);
-  $return = call_user_func_array($function, $args);
-  if ($db_key !== 'default') {
-    db_set_active('default');
-  }
-  return $return;
-}
-
-// TODO: Eliminate in favor of invoking appropriate class
-function schema_engine_invoke($engine, $op) {
-  if (!isset($engine)) {
-    $engine = db_driver();
-  }
-  $function = 'schema_' . $engine . '_' . $op;
-  $args = func_get_args();
-  array_shift($args);
-  return call_user_func_array($function, $args);
 }
 
 /**
  * Converts a column's Schema type into an engine-specific data type.
  */
 function schema_engine_type($col, $table, $field, $engine = NULL) {
-  $map = schema_engine_invoke($engine, 'engine_type_map');
+  $map = db_type_map();
   $size = (isset($col['size']) ? $col['size'] : 'normal');
   $type = $col['type'] . ':' . $size;
   if (isset($map[$type])) {
@@ -236,7 +197,7 @@ function schema_engine_type($col, $table, $field, $engine = NULL) {
  * Convert an engine-specific data type into a Schema type.
  */
 function schema_schema_type($type, $table, $field, $engine = NULL) {
-  $map = schema_engine_invoke($engine, 'schema_type_map');
+  $map = schema_dbobject()->schema_type_map();
   $type = strtolower($type);
   if (isset($map[$type])) {
     return explode(':', $map[$type]);
@@ -257,7 +218,7 @@ function schema_schema_type($type, $table, $field, $engine = NULL) {
  */
 function schema_compare_schemas($ref, $inspect = NULL) {
   if (!isset($inspect)) {
-    $inspect = schema_dbobject()->inspect();
+    $inspect = schema_dbobject()->inspect(variable_get('schema_database_connection', 'default'));
   }
 
   $info = array();
@@ -354,13 +315,13 @@ function schema_compare_schemas($ref, $inspect = NULL) {
  */
 function schema_compare_table($ref, $inspect = NULL) {
   $_db_type = db_driver();
-  if ($_db_type == 'mysqli') {
-    $_db_type = 'mysql';
-  }
 
   if (!isset($inspect)) {
-    $ref_name = db_prefix_tables('{' . $ref['name'] . '}');
-    $inspect = schema_invoke('inspect', $ref_name);
+    // TODO: Handle prefixing the D7 way
+//    $ref_name = db_prefix_tables('{' . $ref['name'] . '}');
+    $ref_name = $ref['name'];
+    $inspect = schema_dbobject()->inspect(
+      variable_get('schema_database_connection', 'default'), $ref_name);
     $inspect = $inspect[$ref['name']];
   }
   if (!isset($inspect)) {
@@ -486,6 +447,12 @@ function schema_compare_table($ref, $inspect = NULL) {
  * Implement of hook_init().
  * Perform setup tasks.
  */
+/**
+ * TODO: Remove this unless someone can explain its purpose. Is it a means for
+ * other modules to add support for other engines? In that case, it is unnecessary -
+ * defining a SchemaDatabaseSchema_<driver> class will do the trick.
+ */
+/*
 function schema_init() {
   schema_require();
 }
@@ -498,6 +465,7 @@ function schema_require() {
 
   // Load all our module 'on behalfs' so they will be available for
   // any module (including this one) that needs them.
+  // TODO: What precisely is the purpose of this? To allow other
   $path = drupal_get_path('module', 'schema');
   $files = drupal_system_listing('/schema_.*\.inc$/', $path . '/modules', 'name', 0);
   foreach ($files as $file) {
@@ -505,27 +473,8 @@ function schema_require() {
     $module = substr_replace($file->name, '', 0, 7);
     require_once("./$file->filename");
   }
-
-  global $_schema_engines;
-  $connection = Database::getConnection();
-  $db_type = db_driver();
-  if (!isset($db_type)) {
-    return;
-  }
-
-  $_schema_engines = array();
-  // Load all Schema database engines.
-  $files = drupal_system_listing('/schema_.*\.inc$/', $path . '/engines', 'name', 0);
-  foreach ($files as $file) {
-    require_once($file->uri);
-    // filename is schema_<dbtype>.inc
-    $_schema_engines[] = substr($file->filename, 7, -4);
-  }
-  if (array_search($db_type, $_schema_engines) === FALSE) {
-    drupal_set_message(t('The Schema module does not support the "!db_type" database type.',
-      array('!db_type' => $db_type)), 'error');
-  }
 }
+*/
 
 /**
  * Implement of hook_permission().
@@ -541,27 +490,27 @@ function schema_permission() {
 /**
  * Implement of hook_menu().
  * Define menu items and page callbacks.
- * admin/build/schema           calls local task(default): schema_report()
- * admin/build/schema/report    calls local task: schema_report()
- * admin/build/schema/describe  calls local task: schema_describe()
- * admin/build/schema/inspect   calls local task: schema_inspect()
- * admin/build/schema/sql       calls local task: schema_sql()
- * admin/build/schema/show      calls local task: schema_show()
+ * admin/structure/schema           calls local task(default): schema_compare()
+ * admin/structure/schema/compare    calls local task: schema_compare()
+ * admin/structure/schema/describe  calls local task: schema_describe()
+ * admin/structure/schema/inspect   calls local task: schema_inspect()
+ * admin/structure/schema/sql       calls local task: schema_sql()
+ * admin/structure/schema/show      calls local task: schema_show()
  */
 function schema_menu() {
   $items['admin/structure/schema'] = array(
     'title' => 'Schema',
     'description' => 'Manage the database schema for this system.',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('schema_report'),
+    'page arguments' => array('schema_compare'),
     'access arguments' => array('administer schema'),
     );
 
-  $items['admin/structure/schema/report'] = array(
+  $items['admin/structure/schema/compare'] = array(
     'title' => 'Compare',
     'type' => MENU_DEFAULT_LOCAL_TASK,
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('schema_report'),
+    'page arguments' => array('schema_compare'),
     'weight' => -10,
     'access arguments' => array('administer schema'),
     );
@@ -632,6 +581,120 @@ function _schema_process_description($desc) {
 }
 
 /**
+ * "Compare" menu callback.
+ * This function just massages the data returned by
+ * schema_compare_schemas() into HTML.
+ */
+function schema_compare() {
+  $form = array();
+  $form['description'] = array(
+    '#prefix' => '<div>',
+    '#markup' => t('This page compares the live database as it currently exists against
+          the combination of all schema information provided by all enabled modules'),
+    '#suffix' => '</div>',
+  );
+
+  $states = array(
+    'same' => t('Match'),
+    'different' => t('Mismatch'),
+    'missing' => t('Missing'),
+    );
+  $descs = array(
+    'same' => 'Tables for which the schema and database agree.',
+    'different' => 'Tables for which the schema and database are different.',
+    'missing' => 'Tables in the schema that are not present in the database.',
+    );
+
+  $schema = drupal_get_schema(NULL, TRUE);
+  $info = schema_compare_schemas($schema);
+
+  // The info array is keyed by state (same/different/missing/extra/warn). For missing,
+  // the value is a simple array of table names. For warn, it is a simple array of warnings.
+  // Get those out of the way first
+  $warnings = $info['warn'];
+  foreach ($warnings as $message) {
+    drupal_set_message($message, 'warning');
+  }
+  unset($info['warn']);
+
+  $form['extra'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Extra (@count)',
+        array('@count' => count($info['extra']))),
+    '#description' => t('Tables in the database that are not present in the schema.  This
+        indicates previously installed modules that are disabled but not un-installed or
+        modules that do not use the Schema API.'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#weight' => 50, // This goes last
+  );
+  $form['extra']['tablelist'] = array(
+    '#theme' => 'item_list',
+    '#items' => $info['extra'],
+  );
+  unset($info['extra']);
+
+  // For the other states, the value is an array keyed by module name. Each value
+  // in that array is an array keyed by tablename, and each of those values is an
+  // array containing 'status' (same as the state), an array of reasons, and an array of notes.
+  $weight = 0;
+  foreach ($info as $state => $modules) {
+    // We'll fill in the fieldset title below, once we have the counts
+    $form[$state] = array(
+      '#type' => 'fieldset',
+      '#description' => t($descs[$state]),
+      '#collapsible' => TRUE,
+      '#collapsed' => TRUE,
+      '#weight' => $weight++,
+    );
+    $counts[$state] = 0;
+
+    foreach ($modules as $module => $tables) {
+      $counts[$state] += count($tables);
+      $form[$state][$module] = array(
+        '#type' => 'fieldset',
+        '#title' => t($module),
+        '#collapsible' => TRUE,
+        '#collapsed' => TRUE,
+      );
+      switch ($state) {
+        case 'same':
+        case 'missing':
+          $form[$state][$module]['tablelist'] = array(
+            '#theme' => 'item_list',
+            '#items' => array_keys($tables),
+          );
+          break;
+
+        case 'different':
+          $items = array();
+          foreach ($tables as $name => $stuff) {
+            $form[$state][$module][$name] = array(
+              '#type' => 'fieldset',
+              '#collapsible' => TRUE,
+              '#collapsed' => TRUE,
+              '#title' => $name,
+            );
+            $form[$state][$module][$name]['reasons'] = array(
+              '#theme' => 'item_list',
+              '#items' => array_merge($tables[$name]['reasons'], $tables[$name]['notes']),
+            );
+          }
+          break;
+      }
+    }
+  }
+
+  // Fill in counts in titles
+  foreach ($states as $state => $description) {
+    $form[$state]['#title'] = t('@state (@count)',
+        array('@state' => $states[$state], '@count' => isset($counts[$state]) ? $counts[$state] : 0));
+  }
+
+  return $form;
+}
+
+/**
  * "Describe" menu callback.
  */
 function schema_describe() {
@@ -695,124 +758,14 @@ field description are hyperlinks to that table's description.",
       '#attributes' => array('id' => 'table-' . $t_name),
     );
     $form[$t_name]['content'] = array(
-      '#prefix' => '<div>',
-      '#markup' => theme('table', array('header' => $row_hdrs, 'rows' => $rows)),
-      '#suffix' => '</div>',
+      '#theme' => 'table',
+      '#header' => $row_hdrs,
+      '#rows' => $rows,
     );
   }
 
   return $form;
 }
-
-
-/**
- * "Report" menu callback.
- * This function just massages the data returned by
- * schema_compare_schemas() into HTML.
- */
-function schema_report() {
-  $form = array();
-  $form['description'] = array(
-    '#prefix' => '<div>',
-    '#markup' => t('This page compares the live database as it currently exists against
-          the combination of all schema information provided by all enabled modules'),
-    '#suffix' => '</div>',
-  );
-
-  $states = array(
-    'same' => t('Match'),
-    'different' => t('Mismatch'),
-    'missing' => t('Missing'),
-    'extra' => t('Extra'),
-    );
-  $descs = array(
-    'same' => 'Tables for which the schema and database agree.',
-    'different' => 'Tables for which the schema and database are different.',
-    'missing' => 'Tables in the schema that are not present in the database.',
-    'extra' => 'Tables in the database that are not present in the schema.  This indicates previously installed modules that are disabled but not un-installed or modules that do not use the Schema API.',
-    );
-
-  $schema = drupal_get_schema(NULL, TRUE);
-  $info = schema_compare_schemas($schema);
-
-  foreach ($info as $state => $modules) {
-    $counts[$state] = 0;
-    $data[$state] = ($state == 'extra' ? array() : '');
-
-    if ($state == 'extra') {
-      $data[$state] = array_merge($data[$state], $modules);
-      $counts[$state] += count($modules);
-      continue;
-    }
-    elseif ($state == 'warn') {
-      foreach ($modules as $msg) {
-        drupal_set_message($msg, 'warning');
-      }
-      continue;
-    }
-
-    foreach ($modules as $module => $tables) {
-      $counts[$state] += count($tables);
-      switch ($state) {
-        case 'same':
-        case 'missing':
-          // TODO: Fix theme call
-          $data[$state] .= theme('item_list', array_keys($tables), $module);
-          break;
-
-        case 'different':
-          $items = array();
-          foreach ($tables as $name => $stuff) {
-            // TODO: Fix theme call
-            $items[] = "<h4>$name</h4>" . theme('item_list',
-              array_merge($tables[$name]['reasons'], $tables[$name]['notes']));
-          }
-
-          $form = array();
-          $form[$module] = array(
-            '#type' => 'fieldset',
-            '#title' => t($module),
-            '#collapsible' => TRUE,
-            '#collapsed' => TRUE,
-            '#value' => '',
-            );
-          $form[$module]['content'] = array(
-            // TODO: Fix theme call
-            '#markup' => theme('item_list', $items),
-            );
-          $data[$state] .= drupal_render($form);
-          break;
-      }
-    }
-  }
-  if (isset($data['extra'])) {
-    // TODO: Fix theme call
-    $data['extra'] = theme('item_list', $data['extra']);
-  }
-
-  $weight = 0;
-  foreach ($states as $state => $content) {
-    $content = (isset($data[$state]) ? $data[$state] : '');
-    $form[$state] = array(
-      '#type' => 'fieldset',
-      '#title' => t('@state (@count)',
-        array('@state' => $states[$state], '@count' => isset($counts[$state]) ? $counts[$state] : 0)),
-      '#description' => t($descs[$state]),
-      '#collapsible' => TRUE,
-      '#collapsed' => TRUE,
-      '#weight' => $weight++,
-      );
-    $form[$state]['content'] = array(
-      '#type' => 'markup',
-      '#prefix' => '<div>',
-      '#markup' => $content,
-      '#suffix' => '</div>',
-    );
-  }
-
-  return $form;
-}
-
 
 /**
  * "Inspect" menu callback.
@@ -835,7 +788,7 @@ function schema_inspect() {
   sort($mods);
   $mods = array_flip($mods);
   $schema = drupal_get_schema(NULL, TRUE);
-  $inspect = schema_dbobject()->inspect();
+  $inspect = schema_dbobject()->inspect(variable_get('schema_database_connection', 'default'));
   foreach ($inspect as $name => $table) {
     $module = isset($schema[$name]['module']) ? $schema[$name]['module'] : 'Unknown';
     if (!isset($form[$module])) {
@@ -879,7 +832,7 @@ function schema_sql($engine = NULL) {
     $sql .= implode(";\n", $stmts) . ";\n\n";
   }
 
-  $output = t('<p>This page shows the CREATE TABLE statements that the Schema module
+  $output = t('<p>This page shows the CREATE TABLE statements that the Schema API
                generates for the selected database engine for each table defined by a
                module.  It is for debugging purposes.</p>');
   $output .= "<textarea style=\"width:100%\" rows=\"30\">$sql</textarea>";
@@ -905,14 +858,13 @@ function schema_show() {
 }
 
 function schema_settings($form, &$form_state) {
-  global $db_url;
-  if (is_array($db_url) && count($db_url) > 1) {
-    // TODO: Handle D7 connections
+  global $databases;
+  if (count($databases) > 1) {
     $form['schema_database_connection'] = array(
       '#type' => 'select',
       '#title' => t('Database connection to use'),
       '#default_value' => variable_get('schema_database_connection', 'default'),
-      '#options' => array_combine(array_keys($db_url), array_keys($db_url)),
+      '#options' => array_combine(array_keys($databases), array_keys($databases)),
       '#description' => t('If you use a secondary database other than the default
         Drupal database you can select it here and use schema\'s "compare" and
         "inspect" functions on that other database.'),

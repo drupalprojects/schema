@@ -20,6 +20,7 @@ class SchemaRegressionTest extends DrupalWebTestCase {
   }
 
   function tearDown() {
+    db_query("DROP TABLE schema_testtbl");
     db_drop_table('schema_testtbl');
     parent::tearDown();
   }
@@ -30,11 +31,11 @@ class SchemaRegressionTest extends DrupalWebTestCase {
   function testInspectionConflict518210() {
     // Create an unprefixed table...
     $tablename = "schema_testtbl";
-    $sql = "CREATE TABLE :table (
+    $sql = "CREATE TABLE $tablename (
               fid INT NOT NULL,
               destid INT NOT NULL
             )";
-    db_query($sql, array(':table' => $tablename));
+    db_query($sql);
 
     // ...and a prefixed table, with a different column list
     $schema = array(
@@ -52,7 +53,7 @@ class SchemaRegressionTest extends DrupalWebTestCase {
     db_create_table($tablename, $schema);
 
     // Do the full inspection, and get our specified tablename
-    $inspect = schema_invoke('inspect');
+    $inspect = schema_dbobject()->inspect();
     $fields = $inspect[$tablename]['fields'];
 
     // We should see only the columns from the prefixed version
@@ -62,6 +63,8 @@ class SchemaRegressionTest extends DrupalWebTestCase {
 
     // Inspect the table by using schema_compare().
     $comparison = schema_compare_table($inspect[$tablename]);
-    $this->assertEqual($comparison['status'], 'same');
+    if (!$this->assertEqual($comparison['status'], 'same', t('Table matches its schema'))) {
+      $this->error(print_r($comparison, TRUE));
+    }
   }
 }
