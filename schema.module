@@ -44,7 +44,7 @@ function schema_phpprint_table($name, $table) {
         $index[] = "'$keyname' => ".schema_phpprint_key($key);
       }
     }
-    if ($table['description']) {
+    if (isset($table['description']) && trim($table['description'])) {
       $description = $table['description'];
     }
     else {
@@ -75,7 +75,7 @@ function schema_phpprint_table($name, $table) {
 
 function schema_phpprint_column($col, $multiline=FALSE) {
   $attrs = array();
-  if ($col['description']) {
+  if (isset($col['description']) && trim($col['description'])) {
     $description = $col['description'];
   }
   else {
@@ -83,7 +83,7 @@ function schema_phpprint_column($col, $multiline=FALSE) {
   }
   unset($col['description']);
   $attrs[] = "'description' => t('$description')";
-  if ($col['type'] == 'varchar' || $col['size'] == 'normal') {
+  if (isset($col['size']) && ($col['type'] == 'varchar' || $col['size'] == 'normal')) {
     unset($col['size']);
   }
   foreach (array('type', 'unsigned', 'size', 'length', 'not null', 'default') as $attr) {
@@ -803,9 +803,16 @@ function schema_inspect() {
         '#weight' => ($module == 'Unknown' ? 0 : $mods[$module]+1),
         '#value' => '');
     }
-    $form[$module][$name] = array(
-      '#type' => 'markup',
-      '#value' => '<textarea style="width:100%" rows="10">'.check_plain(schema_phpprint_table($name, $table)).'</textarea>');
+    if (isset($schema[$name]['module'])) {
+      $form[$module][$name] = array(
+        '#type' => 'markup',
+        '#value' => '<textarea style="width:100%" rows="10">'.check_plain(schema_phpprint_table($name, $schema[$name])).'</textarea>');
+    }
+    else {
+      $form[$module][$name] = array(
+        '#type' => 'markup',
+        '#value' => '<textarea style="width:100%" rows="10">'.check_plain(schema_phpprint_table($name, $inspect[$name])).'</textarea>');
+    }
   }
 
   $output = <<<EOT
