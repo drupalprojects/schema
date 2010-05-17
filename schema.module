@@ -620,7 +620,7 @@ function schema_compare() {
   $form['extra'] = array(
     '#type' => 'fieldset',
     '#title' => t('Extra (@count)',
-        array('@count' => count($info['extra']))),
+        array('@count' => isset($info['extra']) ? count($info['extra']) : 0)),
     '#description' => t('Tables in the database that are not present in the schema.  This
         indicates previously installed modules that are disabled but not un-installed or
         modules that do not use the Schema API.'),
