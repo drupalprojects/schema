@@ -61,7 +61,7 @@ function schema_mysql_schema_type_map() {
 function schema_mysql_create_table_sql($table) {
   $sql_cols = array();
   foreach ($table['fields'] as $colname => $col) {
-    $sql = $colname.' '.schema_engine_type($col, 'mysql');
+    $sql = $colname.' '.schema_engine_type($col, $table, $colname, 'mysql');
     if (isset($col['unsigned']) && $col['unsigned']) {
       $sql .= ' UNSIGNED';
     }
