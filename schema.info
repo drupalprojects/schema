@@ -1,4 +1,3 @@
-; $Id$
 name = Schema
 description = The Schema module provides functionality built on the Schema API.
 package = Database

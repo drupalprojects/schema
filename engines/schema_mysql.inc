@@ -1,5 +1,4 @@
 <?php
-// $Id$
 
 function schema_mysql_engine_type_map() {
   $map = db_type_map();

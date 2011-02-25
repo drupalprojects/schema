@@ -1,5 +1,4 @@
 <?php
-// $Id$
 
 /**
  * @file The Schema module provides functionality built on the Schema API.
