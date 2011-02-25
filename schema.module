@@ -1,5 +1,4 @@
 <?php
-// $Id$
 
 global $schema_engines;
 

@@ -1,5 +1,4 @@
 <?php
-// $Id$
 
 /**
  * This maps a generic data type in combination with its data size
