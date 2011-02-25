@@ -1,4 +1,3 @@
-$Id$
 
 Schema module
 
