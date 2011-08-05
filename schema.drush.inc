@@ -45,7 +45,7 @@ function schema_drush_help($section) {
 /**
  * A drush command callback.
  */
-function drush_schema_schema_inspect() {
+function drush_schema_inspect() {
   $args = func_get_args();
   $names = explode(',', $args[0]);
   foreach ($names as $name) {
