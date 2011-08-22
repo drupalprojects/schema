@@ -51,7 +51,7 @@ function schema_phpprint_table($name, $table) {
     }
     $out = '';
     $out .= "\$schema['".$name."'] = array(\n";
-    $out .= "  'description' => t('$description'),\n";
+    $out .= "  'description' => '$description',\n";
     $out .= "  'fields' => array(\n    ";
     $out .= implode(",\n    ", $cols);
     $out .= ",\n  ),\n";
@@ -81,7 +81,7 @@ function schema_phpprint_column($col, $multiline=FALSE) {
     $description = t('TODO: please describe this field!');
   }
   unset($col['description']);
-  $attrs[] = "'description' => t('$description')";
+  $attrs[] = "'description' => '$description'";
   if (isset($col['size']) && ($col['type'] == 'varchar' || $col['size'] == 'normal')) {
     unset($col['size']);
   }
