@@ -653,7 +653,7 @@ function schema_compare() {
       $counts[$state] += count($tables);
       $form[$state][$module] = array(
         '#type' => 'fieldset',
-        '#title' => t($module),
+        '#title' => $module,
         '#collapsible' => TRUE,
         '#collapsed' => TRUE,
       );
