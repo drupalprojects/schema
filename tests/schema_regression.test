@@ -6,11 +6,11 @@
  */
 
 class SchemaRegressionTest extends DrupalWebTestCase {
-  function getInfo() {
+  public static function getInfo() {
     return array(
-      'name' => t('Schema Regression Tests'),
-      'description' => t('Schema Regression Tests'),
-      'group' => t('Schema'),
+      'name' => 'Schema Regression Tests',
+      'description' => 'Schema Regression Tests',
+      'group' => 'Schema',
     );
   }
 
