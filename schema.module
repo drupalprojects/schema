@@ -610,11 +610,12 @@ function schema_compare() {
   // The info array is keyed by state (same/different/missing/extra/warn). For missing,
   // the value is a simple array of table names. For warn, it is a simple array of warnings.
   // Get those out of the way first
-  $warnings = $info['warn'];
-  foreach ($warnings as $message) {
-    drupal_set_message($message, 'warning');
+  if (isset($info['warn'])) {
+    foreach ($info['warn'] as $message) {
+      drupal_set_message($message, 'warning');
+    }
+    unset($info['warn']);
   }
-  unset($info['warn']);
 
   $form['extra'] = array(
     '#type' => 'fieldset',
@@ -629,7 +630,7 @@ function schema_compare() {
   );
   $form['extra']['tablelist'] = array(
     '#theme' => 'item_list',
-    '#items' => $info['extra'],
+    '#items' => isset($info['extra']) ? $info['extra'] : array(),
   );
   unset($info['extra']);
 
