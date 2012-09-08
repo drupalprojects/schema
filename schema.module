@@ -162,6 +162,14 @@ function schema_unprefix_table($name) {
   elseif (!empty($db_prefix) && preg_match('@^' . $db_prefix . '(.*)@', $name, $m)) {
       return $m[1];
   }
+  elseif (empty($_db_prefix)) {
+    $info = Database::getConnectionInfo($connection = 'default'); // FIXME: obtain the correct connection
+    $_db_prefix = empty($info['default']['prefix'])
+      ? ''
+      : reset($info['default']['prefix']);
+    $db_prefix = $_db_prefix;
+    $name = drupal_substr($name, drupal_strlen($_db_prefix));
+  }
   return $name;
 }
 
