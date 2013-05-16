@@ -169,13 +169,13 @@ function schema_get_connection_options() {
   $options = &drupal_static(__FUNCTION__);
 
   if (!isset($options)) {
-    foreach ($GLOBALS['databases'] as $key => $targets) {
+    foreach ($GLOBALS['databases'] as $connection => $targets) {
       // Only support connections that can be inspected by schema module.
-      if (!schema_get_connection_engine_class($targets['default']['driver'])) {
+      if (!schema_get_connection_engine_class($connection)) {
         continue;
       }
 
-      $options[$key] = $key;
+      $options[$connection] = $connection;
     }
   }
 
@@ -609,6 +609,5 @@ function schema_compare_table($ref, $inspect = NULL) {
   }
 
   $status = (count($reasons) ? 'different' : 'same');
-  return array('status' => $status, 'reasons' => $reasons,
-    'notes' => $notes);
+  return array('status' => $status, 'reasons' => $reasons, 'notes' => $notes);
 }
