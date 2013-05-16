@@ -173,13 +173,45 @@ function schema_unprefix_table($name) {
   return $name;
 }
 
-function schema_dbobject() {
-  static $engines = array();
-  $class_name = 'SchemaDatabaseSchema_' . db_driver();
-  if (!isset($engines[$class_name])) {
-    $engines[$class_name] = new $class_name(Database::getConnection());
+/**
+ * Fetch the schema engine class name for a given database connection.
+ *
+ * @param string $connection
+ *   A database connection key, defaults to 'default'.
+ *
+ * @return
+ *   The schema engine class name if available, otherwise FALSE.
+ */
+function schema_get_connection_engine_class($connection = 'default') {
+  if ($info = Database::getConnectionInfo($connection)) {
+    $driver = $info['default']['driver'];
+    $class_name = 'SchemaDatabaseSchema_' . $driver;
+    if (class_exists($class_name)) {
+      return $class_name;
+    }
   }
-  return $engines[$class_name];
+
+  return FALSE;
+}
+
+/**
+ * Fetch a schema engine class instance for a given database connection.
+ *
+ * @param string $connection
+ *   A database connection key, defaults to the schema_database_connection
+ *   variable, which itself defaults to 'default'.
+ *
+ * @return object
+ *   A schema engine class set to the given connection.
+ */
+function schema_dbobject($connection = NULL) {
+  if (!isset($connection)) {
+    $connection = variable_get('schema_database_connection', 'default');
+  }
+
+  if ($class = schema_get_connection_engine_class($connection)) {
+    return new $class(Database::getConnection('default', $connection));
+  }
 }
 
 /**
@@ -225,7 +257,7 @@ function schema_schema_type($type, $table, $field, $engine = NULL) {
  */
 function schema_compare_schemas($ref, $inspect = NULL) {
   if (!isset($inspect)) {
-    $inspect = schema_dbobject()->inspect(variable_get('schema_database_connection', 'default'));
+    $inspect = schema_dbobject()->inspect();
   }
 
   $info = array();
@@ -327,8 +359,7 @@ function schema_compare_table($ref, $inspect = NULL) {
     // TODO: Handle prefixing the D7 way
 //    $ref_name = db_prefix_tables('{' . $ref['name'] . '}');
     $ref_name = $ref['name'];
-    $inspect = schema_dbobject()->inspect(
-      variable_get('schema_database_connection', 'default'), $ref_name);
+    $inspect = schema_dbobject()->inspect(NULL, $ref_name);
     $inspect = $inspect[$ref['name']];
   }
   if (!isset($inspect)) {
@@ -796,7 +827,7 @@ function schema_inspect() {
   sort($mods);
   $mods = array_flip($mods);
   $schema = drupal_get_schema(NULL, TRUE);
-  $inspect = schema_dbobject()->inspect(variable_get('schema_database_connection', 'default'));
+  $inspect = schema_dbobject()->inspect();
   foreach ($inspect as $name => $table) {
     $module = isset($schema[$name]['module']) ? $schema[$name]['module'] : 'Unknown';
     if (!isset($form[$module])) {
