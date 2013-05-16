@@ -2,6 +2,7 @@ name = Schema
 description = "The Schema module provides functionality built on the Schema API."
 package = Database
 core = 7.x
+configure = admin/structure/schema/settings
 files[] = schema.module
 files[] = schema.install
 files[] = engines/mysql.inc
