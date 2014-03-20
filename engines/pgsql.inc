@@ -40,6 +40,13 @@ class SchemaDatabaseSchema_pgsql extends DatabaseSchema_pgsql {
     $info = $this->connection->getConnectionOptions();
     $database = $info['database'];
 
+    // Apply table prefixes.
+    if (isset($table_name)) {
+      $table_info = $this->connection->schema()->getPrefixInfo($table_name);
+      // @todo What do we do with $table_info['schema']?
+      $table_name = $table_info['table'];
+    }
+
     //
     // Retrieve information about all columns in the database from the
     // 'columns' table of 'information_schema'.  In pgsql, TABLE_CATALOG

@@ -38,6 +38,15 @@ class SchemaDatabaseSchema_mysql extends DatabaseSchema_mysql {
     $info = $this->connection->getConnectionOptions();
     $database = $info['database'];
 
+    // Apply table prefixes.
+    if (isset($table_name)) {
+      $table_info = $this->connection->schema()->getPrefixInfo($table_name);
+      if (!empty($table_info['database'])) {
+        $database = $table_info['database'];
+      }
+      $table_name = $table_info['table'];
+    }
+
     $tables = array();
     $args = array(':database' => $database);
     $sql = 'SELECT table_name, table_comment
