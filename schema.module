@@ -379,7 +379,7 @@ function schema_schema_type($type, $table, $field, $engine = NULL) {
   }
   else {
     if (!variable_get('schema_suppress_type_warnings', FALSE)) {
-      drupal_set_message(t('Field @table.@field: no Schema type for @engine type @type.', array('@engine' => $engine, '@type' => $type, '@table' => $table, '@field' => $field)), 'warning');
+      trigger_error(t('Field @table.@field: no Schema type for @engine type @type.', array('@engine' => $engine, '@type' => $type, '@table' => $table, '@field' => $field)), E_USER_WARNING);
     }
     return array($type, 'normal');
   }
