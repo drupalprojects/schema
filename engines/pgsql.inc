@@ -54,7 +54,7 @@ class SchemaDatabaseSchema_pgsql extends DatabaseSchema_pgsql {
 
     // Apply table prefixes.
     if (isset($table_name)) {
-      $table_info = $this->connection->schema()->getPrefixInfo($table_name);
+      $table_info = $this->getPrefixInfo($table_name);
       // @todo What do we do with $table_info['schema']?
       $table_name = $table_info['table'];
     }

@@ -29,6 +29,28 @@ class SchemaDatabaseSchema_mysql extends DatabaseSchema_mysql {
   }
 
   /**
+   * Overrides DatabaseSchema_mysql::getPrefixInfo().
+   *
+   * @todo Remove when https://drupal.org/node/2223073 is fixed in core.
+   */
+  protected function getPrefixInfo($table = 'default', $add_prefix = TRUE) {
+    $info = array('prefix' => $this->connection->tablePrefix($table));
+    if ($add_prefix) {
+      $table = $info['prefix'] . $table;
+    }
+    if (($pos = strpos($table, '.')) !== FALSE) {
+      $info['database'] = substr($table, 0, $pos);
+      $info['table'] = substr($table, ++$pos);
+    }
+    else {
+      $db_info = $this->connection->getConnectionOptions();
+      $info['database'] = $db_info['database'];
+      $info['table'] = $table;
+    }
+    return $info;
+  }
+
+  /**
    * Overrides DatabaseSchema_mysql::getFieldTypeMap().
    */
   public function getFieldTypeMap() {
@@ -52,8 +74,8 @@ class SchemaDatabaseSchema_mysql extends DatabaseSchema_mysql {
 
     // Apply table prefixes.
     if (isset($table_name)) {
-      $table_info = $this->connection->schema()->getPrefixInfo($table_name);
-      if (!empty($table_info['database'])) {
+      $table_info = $this->getPrefixInfo($table_name);
+      if (!empty($table_info['database']) && $database != $table_info['database']) {
         $database = $table_info['database'];
       }
       $table_name = $table_info['table'];
