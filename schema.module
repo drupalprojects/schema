@@ -307,47 +307,49 @@ function schema_phpprint_key($keys) {
 // Schema comparison functions
 //////////////////////////////////////////////////////////////////////
 
-function schema_unprefix_table($name) {
-  // TODO: Deal with D7 prefixing
-  global $db_prefix;
-  static $_db_prefix;
+/**
+ * Unprefix a table name.
+ *
+ * This is pretty much the converse of DatabaseConnection::prefixTables().
+ *
+ * @param string $name
+ *   The prefixed table name.
+ * @param DatabaseConnection $connection
+ *   An optional database connection object.
+ *
+ * @return string
+ *   The unprefixed table name.
+ */
+function schema_unprefix_table($name, $connection = NULL) {
+  $prefixes = &drupal_static(__FUNCTION__, array());
 
-  if (is_array($db_prefix)) {
-    if (!isset($_db_prefix)) {
-      foreach ($db_prefix as $key => $val) {
-        $_db_prefix[$val . $key] = $key;
-      }
-    }
-    if (isset($_db_prefix[$name])) {
-      return $_db_prefix[$name];
-    }
-    elseif (!empty($db_prefix['default']) && preg_match('@^' . $db_prefix['default'] . '(.*)@', $name, $m)) {
-      return $m[1];
+  if (!isset($connection)) {
+    $connection = Datbase::getConnection();
+  }
+
+  $key = $connection->getKey();
+  if (!isset($prefixes[$key])) {
+    $prefixes[$key] = array();
+
+    $info = $connection->getConnectionOptions();
+    if (is_array($info['prefix'])) {
+      $info['prefix'] = $info['prefix'] + array('default' => '');
     }
     else {
-      // On pgsql, key and index names are also prefixed
-      // (e.g. 'prefix_blocks_roles_rid_idx').
-      foreach ($db_prefix as $key => $val) {
-        if (($key != 'default' && preg_match('@^' . $val . '(' . $key . '.*)@', $name, $m)) ||
-          ($key == 'default' && preg_match('@^' . $val . '(.*)@', $name, $m))) {
-          return $m[1];
-        }
+      $info['prefix'] = array('default' => $info['prefix']);
+    }
+
+    foreach ($info['prefix'] as $table => $prefix) {
+      if ($table != 'default') {
+        $prefixes[$key][$prefix . $table] = $table;
       }
-      return $name;
+      else {
+        $prefixes[$key][$prefix] = '';
+      }
     }
   }
-  elseif (!empty($db_prefix) && preg_match('@^' . $db_prefix . '(.*)@', $name, $m)) {
-      return $m[1];
-  }
-  elseif (empty($_db_prefix)) {
-    $info = Database::getConnectionInfo($connection = 'default'); // FIXME: obtain the correct connection
-    $_db_prefix = empty($info['default']['prefix'])
-      ? ''
-      : reset($info['default']['prefix']);
-    $db_prefix = $_db_prefix;
-    $name = drupal_substr($name, drupal_strlen($_db_prefix));
-  }
-  return $name;
+
+  return strtr($name, $prefixes[$key]);
 }
 
 /**

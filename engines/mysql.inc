@@ -106,7 +106,7 @@ class SchemaDatabaseSchema_mysql extends DatabaseSchema_mysql {
 
     $res = $this->connection->query($sql, $args);
     foreach ($res as $r) {
-      $r->new_table_name = schema_unprefix_table($r->table_name);
+      $r->new_table_name = schema_unprefix_table($r->table_name, $this->connection);
 
       $numeric = !is_null($r->numeric_scale);
       $col = array();

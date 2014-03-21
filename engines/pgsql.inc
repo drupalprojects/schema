@@ -85,7 +85,7 @@ class SchemaDatabaseSchema_pgsql extends DatabaseSchema_pgsql {
     foreach ($res as $r) {
       $col = array();
 
-      $r->new_table_name = schema_unprefix_table($r->table_name);
+      $r->new_table_name = schema_unprefix_table($r->table_name, $this->connection);
 
       // We treat numeric columns slightly differently and identify them
       // because they have a 'numeric_precision_radix' property.
@@ -185,7 +185,7 @@ class SchemaDatabaseSchema_pgsql extends DatabaseSchema_pgsql {
                      INNER JOIN information_schema.check_constraints cc ON ccu.constraint_name=cc.constraint_name
                      WHERE table_schema=current_schema()');
     foreach ($res as $r) {
-      $r->table_name = schema_unprefix_table($r->table_name);
+      $r->table_name = schema_unprefix_table($r->table_name, $this->connection);
 
       if ($r->check_clause == '((' . $r->column_name . ' >= 0))' ||
           $r->check_clause == '((' . $r->column_name . ' >= (0)::numeric))') {
@@ -208,8 +208,8 @@ class SchemaDatabaseSchema_pgsql extends DatabaseSchema_pgsql {
       '      c.relnamespace=n.oid AND n.nspname=current_schema() ' .
       'ORDER BY c2.relname');
     foreach ($res as $r) {
-      $r->tblname = schema_unprefix_table($r->tblname);
-      $r->indname = schema_unprefix_table($r->indname);
+      $r->tblname = schema_unprefix_table($r->tblname, $this->connection);
+      $r->indname = schema_unprefix_table($r->indname, $this->connection);
 
       if (preg_match('@CREATE(?: UNIQUE)? INDEX \w+ ON "?(\w+)"?(?: USING \w+)? \((.*)\)@', $r->inddef, $m)) {
         list($all, $table, $keys) = $m;
