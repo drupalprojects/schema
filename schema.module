@@ -361,7 +361,7 @@ function schema_engine_type($col, $table, $field, $engine = NULL) {
     return $map[$type];
   }
   else {
-    trigger_error(t('%table.%field: no %engine type for Schema type %type.', array('%engine' => $engine, '%type' => $type, '%table' => $table, '%field' => $field)), E_USER_WARNING);
+    trigger_error(t('@table.@field: no @engine type for schema type @type.', array('@engine' => $engine, '@type' => $type, '@table' => $table, '@field' => $field)), E_USER_WARNING);
     return $col['type'];
   }
 }
@@ -377,7 +377,7 @@ function schema_schema_type($type, $table, $field, $engine = NULL) {
   }
   else {
     if (!variable_get('schema_suppress_type_warnings', FALSE)) {
-      trigger_error(t('Field @table.@field: no Schema type for @engine type @type.', array('@engine' => $engine, '@type' => $type, '@table' => $table, '@field' => $field)), E_USER_WARNING);
+      trigger_error(t('@table.@field: no schema type for @engine type @type.', array('@engine' => $engine, '@type' => $type, '@table' => $table, '@field' => $field)), E_USER_WARNING);
     }
     return array($type, 'normal');
   }
