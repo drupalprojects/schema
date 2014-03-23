@@ -324,7 +324,7 @@ function schema_unprefix_table($name, $connection = NULL) {
   $prefixes = &drupal_static(__FUNCTION__, array());
 
   if (!isset($connection)) {
-    $connection = Datbase::getConnection();
+    $connection = Database::getConnection();
   }
 
   $key = $connection->getKey();
@@ -332,24 +332,26 @@ function schema_unprefix_table($name, $connection = NULL) {
     $prefixes[$key] = array();
 
     $info = $connection->getConnectionOptions();
-    if (is_array($info['prefix'])) {
-      $info['prefix'] = $info['prefix'] + array('default' => '');
-    }
-    else {
-      $info['prefix'] = array('default' => $info['prefix']);
-    }
-
-    foreach ($info['prefix'] as $table => $prefix) {
-      if ($table != 'default') {
-        $prefixes[$key][$prefix . $table] = $table;
+    if (isset($info['prefix'])) {
+      if (is_array($info['prefix'])) {
+        $info['prefix'] = $info['prefix'] + array('default' => '');
       }
       else {
-        $prefixes[$key][$prefix] = '';
+        $info['prefix'] = array('default' => $info['prefix']);
+      }
+
+      foreach ($info['prefix'] as $table => $prefix) {
+        if ($table != 'default') {
+          $prefixes[$key][$prefix . $table] = $table;
+        }
+        elseif ($prefix !== '') {
+          $prefixes[$key][$prefix] = '';
+        }
       }
     }
   }
 
-  return strtr($name, $prefixes[$key]);
+  return !empty($prefixes[$key]) ? strtr($name, $prefixes[$key]) : $name;
 }
 
 /**
