@@ -20,11 +20,22 @@ class SchemaCompare extends FormBase {
     return 'schema_compare';
   }
 
-  
+  /**
+   * Form submission handler.
+   *
+   * @param array $form
+   *   An associative array containing the structure of the form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The current state of the form.
+   */
+  public function submitForm(array &$form, FormStateInterface $form_state) {
+    // TODO: Implement submitForm() method.
+  }
+
 
   public function buildForm(array $form, \Drupal\Core\Form\FormStateInterface $form_state) {
     $build = array();
-  
+
     $states = array(
       'same' => t('Match'),
       'different' => t('Mismatch'),
@@ -35,10 +46,10 @@ class SchemaCompare extends FormBase {
       'different' => t('Tables for which the schema and database are different.'),
       'missing' => t('Tables in the schema that are not present in the database.'),
     );
-  
+
     $schema = drupal_get_schema(NULL, TRUE);
     $info = schema_compare_schemas($schema);
-  
+
     // The info array is keyed by state (same/different/missing/extra/warn). For missing,
     // the value is a simple array of table names. For warn, it is a simple array of warnings.
     // Get those out of the way first
@@ -48,7 +59,7 @@ class SchemaCompare extends FormBase {
       }
       unset($info['warn']);
     }
-  
+
     $build['extra'] = array(
       '#type' => 'fieldset',
       '#title' => t('Extra (@count)', array('@count' => isset($info['extra']) ? count($info['extra']) : 0)),
@@ -62,7 +73,7 @@ class SchemaCompare extends FormBase {
       '#items' => isset($info['extra']) ? $info['extra'] : array(),
     );
     unset($info['extra']);
-  
+
     // For the other states, the value is an array keyed by module name. Each value
     // in that array is an array keyed by tablename, and each of those values is an
     // array containing 'status' (same as the state), an array of reasons, and an array of notes.
@@ -77,7 +88,7 @@ class SchemaCompare extends FormBase {
         '#weight' => $weight++,
       );
       $counts[$state] = 0;
-  
+
       foreach ($modules as $module => $tables) {
         $counts[$state] += count($tables);
         $build[$state][$module] = array(
@@ -94,7 +105,7 @@ class SchemaCompare extends FormBase {
               '#items' => array_keys($tables),
             );
             break;
-  
+
           case 'different':
             $items = array();
             foreach ($tables as $name => $stuff) {
@@ -113,12 +124,12 @@ class SchemaCompare extends FormBase {
         }
       }
     }
-  
+
     // Fill in counts in titles
     foreach ($states as $state => $description) {
       $build[$state]['#title'] = t('@state (@count)', array('@state' => $states[$state], '@count' => isset($counts[$state]) ? $counts[$state] : 0));
     }
-  
+
     return $build;
   }
 }

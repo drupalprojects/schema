@@ -14,6 +14,7 @@
  * @see schema_compare_schemas()
  */
 function schema_requirements($phase) {
+  return; // @fixme
   $reqs = array();
   $t = 't';
   if ($phase == 'runtime' && \Drupal::config('schema.settings')->get('schema_status_report')) {
@@ -83,16 +84,4 @@ function schema_requirements($phase) {
 function schema_uninstall() {
   \Drupal::config('schema.settings')->clear('schema_status_report')->save();
   \Drupal::config('schema.settings')->clear('schema_suppress_type_warnings')->save();
-}
-
-/**
- * Moved menu callbacks to include files.
- */
-function schema_update_7100() {
-  // @FIXME
-// // @FIXME
-// // This looks like another module's variable. You'll need to rewrite this call
-// // to ensure that it uses the correct configuration object.
-// variable_set('menu_rebuild_needed', TRUE);
-
 }

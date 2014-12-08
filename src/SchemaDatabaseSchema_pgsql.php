@@ -6,6 +6,8 @@ namespace Drupal\schema;
  * Schema module enhancements to DatabaseSchema_pgsql
  */
 
+use Drupal\Core\Database\Driver\pgsql\Schema as DatabaseSchema_pgsql;
+
 class SchemaDatabaseSchema_pgsql extends DatabaseSchema_pgsql {
   /**
    * Retrieve generated SQL to create a new table from a Drupal schema definition.

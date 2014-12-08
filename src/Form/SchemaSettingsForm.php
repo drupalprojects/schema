@@ -37,9 +37,9 @@ class SchemaSettingsForm extends ConfigFormBase {
 
     parent::submitForm($form, $form_state);
   }
-  
 
-  public function buildForm(array $form, \Drupal\Core\Form\FormStateInterface &$form_state) {
+
+  public function buildForm(array $form, \Drupal\Core\Form\FormStateInterface $form_state) {
     $connection_options = schema_get_connection_options();
     $form['schema_database_connection'] = array(
       '#type' => 'select',
@@ -61,7 +61,7 @@ class SchemaSettingsForm extends ConfigFormBase {
       '#default_value' => \Drupal::config('schema.settings')->get('schema_suppress_type_warnings'),
       '#description' => t('When checked, missing schema type warnings will be suppressed.'),
     );
-  
+
     return parent::buildForm($form, $form_state);
   }
 }

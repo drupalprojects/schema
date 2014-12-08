@@ -20,11 +20,22 @@ class SchemaInspect extends FormBase {
     return 'schema_inspect';
   }
 
-  
+  /**
+   * Form submission handler.
+   *
+   * @param array $form
+   *   An associative array containing the structure of the form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The current state of the form.
+   */
+  public function submitForm(array &$form, FormStateInterface $form_state) {
+    // TODO: Implement submitForm() method.
+  }
+
 
   public function buildForm(array $form, \Drupal\Core\Form\FormStateInterface $form_state) {
     $build = array();
-  
+
     $mods = module_list();
     sort($mods);
     $mods = array_flip($mods);
@@ -47,7 +58,7 @@ class SchemaInspect extends FormBase {
         '#markup' => '<textarea style="width:100%" rows="10">' . check_plain(schema_phpprint_table($name, $table)) . '</textarea>',
       );
     }
-  
+
     return $build;
   }
 }

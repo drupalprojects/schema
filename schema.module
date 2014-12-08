@@ -4,6 +4,9 @@
  * @file
  * The Schema module provides functionality built on the Schema API.
  */
+use Drupal\Core\Database\Connection;
+use Drupal\Core\Database\Schema as DatabaseSchema;
+use Drupal\Core\Database\Database;
 
 /**
  * Implements hooK_help().
@@ -31,97 +34,6 @@ function schema_help($path, $arg) {
 }
 
 /**
- * Implements hook_permission().
- */
-function schema_permission() {
-  return array(
-    'administer schema' => array(
-      'title' => t('Administer schema module'),
-    ),
-  );
-}
-
-/**
- * Implements hook_menu().
- */
-function schema_menu() {
-  $items['admin/structure/schema'] = array(
-    'title' => 'Schema',
-    'description' => 'Manage the database schema for this system.',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('schema_compare'),
-    'access arguments' => array('administer schema'),
-    'file' => 'schema.pages.inc',
-  );
-  $items['admin/structure/schema/compare'] = array(
-    'title' => 'Compare',
-    'type' => MENU_DEFAULT_LOCAL_TASK,
-    'weight' => -10,
-  );
-  $items['admin/structure/schema/describe'] = array(
-    'title' => 'Describe',
-    'type' => MENU_LOCAL_TASK,
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('schema_describe'),
-    'weight' => -8,
-    'access arguments' => array('administer schema'),
-    'file' => 'schema.pages.inc',
-  );
-  $items['admin/structure/schema/inspect'] = array(
-    'title' => 'Inspect',
-    'type' => MENU_LOCAL_TASK,
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('schema_inspect'),
-    'weight' => -6,
-    'access arguments' => array('administer schema'),
-    'file' => 'schema.pages.inc',
-  );
-  $items['admin/structure/schema/sql'] = array(
-    'title' => 'SQL',
-    'type' => MENU_LOCAL_TASK,
-    'page callback' => 'schema_sql',
-    'weight' => -4,
-    'access arguments' => array('administer schema'),
-    'file' => 'schema.pages.inc',
-  );
-
-  // This can't work unless we rename the functions in database.*.inc.
-  // global $_schema_engines;
-  // if (FALSE && isset($_schema_engines) && is_array($_schema_engines)) {
-  //   foreach ($_schema_engines as $engine) {
-  //     $items['admin/structure/schema/sql/' . $engine] = array(
-  //       'title' => $engine,
-  //       'type' => ($engine == db_driver() ? MENU_DEFAULT_LOCAL_TASK :
-  //         MENU_LOCAL_TASK),
-  //       'page callback' => 'schema_sql',
-  //       'callback arguments' => $engine,
-  //       'access arguments' => array('administer schema'),
-  //       );
-  //   }
-  // }
-
-  $items['admin/structure/schema/show'] = array(
-    'title' => 'Show',
-    'type' => MENU_LOCAL_TASK,
-    'page callback' => 'schema_show',
-    'weight' => -2,
-    'access arguments' => array('administer schema'),
-    'file' => 'schema.pages.inc',
-  );
-  $items['admin/structure/schema/settings'] = array(
-    'title' => 'Settings',
-    'type' => MENU_LOCAL_TASK,
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('schema_settings_form'),
-    'weight' => 50,
-    'access arguments' => array('administer schema'),
-    'file' => 'schema.admin.inc',
-  );
-
-  return $items;
-}
-
-/**
  * Fetch the schema engine class name for a given database connection.
  *
  * @param string $connection
@@ -133,7 +45,7 @@ function schema_menu() {
 function schema_get_connection_engine_class($connection = 'default') {
   if ($info = Database::getConnectionInfo($connection)) {
     $driver = $info['default']['driver'];
-    $class_name = 'SchemaDatabaseSchema_' . $driver;
+    $class_name = 'Drupal\schema\SchemaDatabaseSchema_' . $driver;
     if (class_exists($class_name)) {
       return $class_name;
     }
@@ -617,7 +529,8 @@ function schema_compare_table($ref, $inspect = NULL) {
 /**
  * Implements hook_schema_field_type_map_alter() on behalf of field.module.
  */
-function field_schema_field_type_map_alter(array &$map, DatabaseSchema $schema, DatabaseConnection $connection) {
+function field_schema_field_type_map_alter(array &$map, DatabaseSchema $schema, Connection $connection) {
+  return; // @fixme
   $db_type = $connection->databaseType() . '_type';
 
   // Load all fields in order to inspect each field's schema.

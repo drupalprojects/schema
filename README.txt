@@ -1,9 +1,8 @@
-
 Schema module
 
 PREREQUISITES
 
-Drupal 7.x
+Drupal 8.x
 
 OVERVIEW
 
@@ -17,13 +16,13 @@ provided by the core Schema API that is useful for module
 developers. Currently, this includes:
 
 * Schema documentation: hyperlinked display of the schema's embedded
-  documentation explaining what each table and field is for. 
+  documentation explaining what each table and field is for.
 * Schema structure generation: the module examines the live database
   and creates Schema API data structures for all tables that match the
-  live database. 
+  live database.
 * Schema comparison: the module compares the live database structure
   with the schema structure declared by all enabled modules, reporting
-  on any missing or incorrect tables. 
+  on any missing or incorrect tables.
 
 Note for MySQL users: The Schema module requires MySQL 5. Prior
 versions of MySQL do not support the INFORMATION_SCHEMA database that

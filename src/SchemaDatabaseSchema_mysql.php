@@ -6,6 +6,8 @@ namespace Drupal\schema;
  * Schema module enhancements to DatabaseSchema_mysql
  */
 
+use Drupal\Core\Database\Driver\mysql\Schema as DatabaseSchema_mysql;
+
 class SchemaDatabaseSchema_mysql extends DatabaseSchema_mysql {
   /**
    * Retrieve generated SQL to create a new table from a Drupal schema definition.

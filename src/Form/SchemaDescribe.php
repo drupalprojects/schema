@@ -20,15 +20,26 @@ class SchemaDescribe extends FormBase {
     return 'schema_describe';
   }
 
-  
+  /**
+   * Form submission handler.
+   *
+   * @param array $form
+   *   An associative array containing the structure of the form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The current state of the form.
+   */
+  public function submitForm(array &$form, FormStateInterface $form_state) {
+    // TODO: Implement submitForm() method.
+  }
+
 
   public function buildForm(array $form, \Drupal\Core\Form\FormStateInterface $form_state) {
     $build = array();
-  
+
     $schema = drupal_get_schema(NULL, TRUE);
     ksort($schema);
     $row_hdrs = array(t('Name'), t('Type[:Size]'), t('Null?'), t('Default'));
-  
+
     $default_table_description = t('TODO: please describe this table!');
     $default_field_description = t('TODO: please describe this field!');
     foreach ($schema as $t_name => $t_spec) {
@@ -61,11 +72,11 @@ class SchemaDescribe extends FormBase {
           drupal_set_message(_schema_process_description(t('Field {!table}.@field has no description.', array('!table' => $t_name, '@field' => $c_name))), 'warning');
         }
       }
-  
+
       if (empty($t_spec['description']) || $t_spec['description'] == $default_table_description) {
         drupal_set_message(_schema_process_description(t('Table {!table} has no description.', array('!table' => $t_name))), 'warning');
       }
-  
+
       $build[$t_name] = array(
         '#type' => 'fieldset',
         '#title' => t('@table (@module module)',
@@ -81,7 +92,7 @@ class SchemaDescribe extends FormBase {
         '#rows' => $rows,
       );
     }
-  
+
     return $build;
   }
 }
