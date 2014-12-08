@@ -1,12 +1,18 @@
 <?php
+namespace Drupal\schema\Tests;
+
 /**
- * @file
- * Regression tests for the Schema module
- *
+ * Schema Regression Tests
+ * 
+ * @group schema
  */
 
-class SchemaRegressionTest extends DrupalWebTestCase {
-  public static function getInfo() {
+class SchemaRegressionTest extends \Drupal\simpletest\WebTestBase {
+  
+  protected $profile = 'standard';
+
+  public static $modules = ["schema", "schema_test"];
+public static function getInfo() {
     return array(
       'name' => 'Schema Regression Tests',
       'description' => 'Schema Regression Tests',
@@ -15,7 +21,7 @@ class SchemaRegressionTest extends DrupalWebTestCase {
   }
 
   function setUp() {
-    parent::setUp('schema', 'schema_test');
+    parent::setUp();
   }
 
   /**

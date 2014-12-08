@@ -154,7 +154,7 @@ function schema_get_connection_engine_class($connection = 'default') {
  */
 function schema_dbobject($connection = NULL) {
   if (!isset($connection)) {
-    $connection = variable_get('schema_database_connection', 'default');
+    $connection = \Drupal::config('schema.settings')->get('schema_database_connection');
   }
 
   if ($class = schema_get_connection_engine_class($connection)) {
@@ -380,7 +380,7 @@ function schema_schema_type($type, $table, $field, $engine = NULL) {
     return explode(':', $map[$type]);
   }
   else {
-    if (!variable_get('schema_suppress_type_warnings', FALSE)) {
+    if (!\Drupal::config('schema.settings')->get('schema_suppress_type_warnings')) {
       trigger_error(t('@table.@field: no schema type for @engine type @type.', array('@engine' => $engine, '@type' => $type, '@table' => $table, '@field' => $field)), E_USER_WARNING);
     }
     return array($type, 'normal');
@@ -640,7 +640,7 @@ function field_schema_field_type_map_alter(array &$map, DatabaseSchema $schema, 
       if (!isset($map[$generic_type])) {
         // Use engine specific type if it exists.
         $map[$generic_type] = isset($col[$db_type]) ? $col[$db_type] : $col['type'];
-        $map[$generic_type] = drupal_strtoupper($map[$generic_type]);
+        $map[$generic_type] = \Drupal\Component\Utility\Unicode::strtoupper($map[$generic_type]);
       }
     }
   }

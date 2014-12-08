@@ -1,12 +1,16 @@
 <?php
+namespace Drupal\schema\Tests;
 
 /**
- * @file
- * Defines SchemaUnitTestCase.
+ * Schema functional tests
+ * 
+ * @group schema
  */
 
-class SchemaUnitTestCase extends DrupalWebTestCase {
-  protected $profile = 'testing';
+class SchemaUnitTestCase extends \Drupal\simpletest\WebTestBase {
+  
+  public static $modules = ["schema", "schema_test"];
+protected $profile = 'testing';
 
   public static function getInfo() {
     return array(
@@ -17,7 +21,7 @@ class SchemaUnitTestCase extends DrupalWebTestCase {
   }
 
   function setUp() {
-    parent::setUp('schema', 'schema_test');
+    parent::setUp();
   }
 
   /*function testGetFieldTypeMap() {
