@@ -14,7 +14,7 @@ class DefaultController extends ControllerBase {
 
 
   public function schema_sql($engine = NULL) {
-    $schema = drupal_get_schema(NULL, TRUE);
+    $schema = schema_get_schema(TRUE);
     $connection = Database::getConnection();
     $sql = '';
     foreach ($schema as $name => $table) {
@@ -27,17 +27,17 @@ class DefaultController extends ControllerBase {
       else {
         $stmts = schema_dbobject()->getCreateTableSql($name, $table);
       }
-  
+
       $sql .= implode(";\n", $stmts) . ";\n\n";
     }
-  
+
     return "<textarea style=\"width:100%\" rows=\"30\">$sql</textarea>";
   }
 
   public function schema_show() {
-    $schema = drupal_get_schema(NULL, TRUE);
+    $schema = schema_get_schema(TRUE);
     $show = var_export($schema, 1);
-  
+
     return "<textarea style=\"width:100%\" rows=\"30\">$show</textarea>";
   }
 }

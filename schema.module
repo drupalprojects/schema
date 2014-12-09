@@ -527,34 +527,64 @@ function schema_compare_table($ref, $inspect = NULL) {
 }
 
 /**
- * Implements hook_schema_field_type_map_alter() on behalf of field.module.
+ * Computes and returns the complete schema for all the drupal things.
  */
-function field_schema_field_type_map_alter(array &$map, DatabaseSchema $schema, Connection $connection) {
-  return; // @fixme
-  $db_type = $connection->databaseType() . '_type';
+function schema_get_schema($rebuild = FALSE) {
+  $schema = drupal_get_schema(NULL, $rebuild);
 
-  // Load all fields in order to inspect each field's schema.
-  $include_additional = array(
-    'include_deleted' => TRUE,
-    'include_inactive' => TRUE,
-  );
-  $fields = field_read_fields(array(), $include_additional);
+  // Add schema for content entities.
+  $entity_types = \Drupal::entityManager()->getDefinitions();
+  foreach ($entity_types as $entity_type) {
+    if ($entity_type instanceof \Drupal\Core\Entity\ContentEntityTypeInterface) {
+      $storage = \Drupal::entityManager()->getStorage($entity_type->id());
+      $class = $entity_type->getHandlerClass('storage_schema') ?: 'Drupal\Core\Entity\Sql\SqlContentEntityStorageSchema';
+      $storage_schema = new $class(\Drupal::entityManager(), $entity_type, $storage, \Drupal::database());
+      $table_mapping = $storage->getTableMapping();
 
-  foreach ($fields as $field) {
-    $cols = $field['columns'];
+      // Build up entity schema from base tables, as well as shared and
+      // dedicated field tables. Too bad core doesn't this for us. :-/
+      $entity_schema = array();
 
-    // Loop through each field column and add any missing mappings.
-    foreach ($cols as $col) {
-      if (!isset($col['type'])) {
-        continue;
+      // Use reflection to access protected methods.
+      $reflection = new ReflectionClass($class);
+      $entity_schema_method = $reflection->getMethod('getEntitySchema');
+      $entity_schema_method->setAccessible(TRUE);
+      $entity_schema += $entity_schema_method->invoke($storage_schema, $entity_type, $rebuild);
+
+      // Add schema for shared field tables
+      $field_types = \Drupal::entityManager()->getFieldStorageDefinitions($entity_type->id());
+      foreach ($field_types as $field_storage) {
+        if ($table_mapping->requiresDedicatedTableStorage($field_storage)) {
+          $entity_schema_method = $reflection->getMethod('getDedicatedTableSchema');
+          $entity_schema_method->setAccessible(TRUE);
+          $entity_schema += $entity_schema_method->invoke($storage_schema, $field_storage);
+        }
+        elseif ($table_mapping->allowsSharedTableStorage($field_storage)) {
+          $field_name = $field_storage->getName();
+          foreach (array_diff($table_mapping->getTableNames(), $table_mapping->getDedicatedTableNames()) as $table_name) {
+            if (in_array($field_name, $table_mapping->getFieldNames($table_name))) {
+              $column_names = $table_mapping->getColumnNames($field_name);
+
+              $entity_schema_method = $reflection->getMethod('getSharedTableFieldSchema');
+              $entity_schema_method->setAccessible(TRUE);
+              $entity_schema[$table_name] += $entity_schema_method->invoke($storage_schema, $field_storage, $table_name, $column_names);
+            }
+          }
+        }
+        else {
+          // Field uses custom storage which we cannot determine automatically.
+          // @todo Is this correct?
+        }
       }
-      $size = isset($col['size']) ? $col['size'] : 'normal';
-      $generic_type = $col['type'] . ':' . $size;
-      if (!isset($map[$generic_type])) {
-        // Use engine specific type if it exists.
-        $map[$generic_type] = isset($col[$db_type]) ? $col[$db_type] : $col['type'];
-        $map[$generic_type] = \Drupal\Component\Utility\Unicode::strtoupper($map[$generic_type]);
+
+      // Add module information, if it doesn't exist.
+      foreach ($entity_schema as $name => $table) {
+        if (!isset($table['module'])) {
+          $table['module'] = $entity_type->getProvider();
+        }
+        $schema[$name] = $table;
       }
     }
   }
+  return $schema;
 }

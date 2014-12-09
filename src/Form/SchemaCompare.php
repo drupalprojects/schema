@@ -47,7 +47,7 @@ class SchemaCompare extends FormBase {
       'missing' => t('Tables in the schema that are not present in the database.'),
     );
 
-    $schema = drupal_get_schema(NULL, TRUE);
+    $schema = schema_get_schema(TRUE);
     $info = schema_compare_schemas($schema);
 
     // The info array is keyed by state (same/different/missing/extra/warn). For missing,
@@ -61,11 +61,9 @@ class SchemaCompare extends FormBase {
     }
 
     $build['extra'] = array(
-      '#type' => 'fieldset',
+      '#type' => 'details',
       '#title' => t('Extra (@count)', array('@count' => isset($info['extra']) ? count($info['extra']) : 0)),
       '#description' => t('Tables in the database that are not present in the schema. This indicates previously installed modules that are disabled but not un-installed or modules that do not use the Schema API.'),
-      '#collapsible' => TRUE,
-      '#collapsed' => TRUE,
       '#weight' => 50,
     );
     $build['extra']['tablelist'] = array(
@@ -81,10 +79,8 @@ class SchemaCompare extends FormBase {
     foreach ($info as $state => $modules) {
       // We'll fill in the fieldset title below, once we have the counts
       $build[$state] = array(
-        '#type' => 'fieldset',
+        '#type' => 'details',
         '#description' => $descs[$state],
-        '#collapsible' => TRUE,
-        '#collapsed' => TRUE,
         '#weight' => $weight++,
       );
       $counts[$state] = 0;
@@ -92,10 +88,8 @@ class SchemaCompare extends FormBase {
       foreach ($modules as $module => $tables) {
         $counts[$state] += count($tables);
         $build[$state][$module] = array(
-          '#type' => 'fieldset',
+          '#type' => 'details',
           '#title' => $module,
-          '#collapsible' => TRUE,
-          '#collapsed' => TRUE,
         );
         switch ($state) {
           case 'same':

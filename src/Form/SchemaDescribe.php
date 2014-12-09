@@ -36,7 +36,7 @@ class SchemaDescribe extends FormBase {
   public function buildForm(array $form, \Drupal\Core\Form\FormStateInterface $form_state) {
     $build = array();
 
-    $schema = drupal_get_schema(NULL, TRUE);
+    $schema = schema_get_schema(TRUE);
     ksort($schema);
     $row_hdrs = array(t('Name'), t('Type[:Size]'), t('Null?'), t('Default'));
 

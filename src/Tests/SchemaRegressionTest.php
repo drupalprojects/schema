@@ -3,12 +3,12 @@ namespace Drupal\schema\Tests;
 
 /**
  * Schema Regression Tests
- * 
+ *
  * @group schema
  */
 
 class SchemaRegressionTest extends \Drupal\simpletest\WebTestBase {
-  
+
   protected $profile = 'standard';
 
   public static $modules = ["schema", "schema_test"];
@@ -55,7 +55,7 @@ public static function getInfo() {
     $this->assertTrue(isset($fields['destid']), 'Column destid exists.');
 
     // Inspect the table by using schema_compare().
-    $schema = drupal_get_schema('schema_test_1');
+    $schema = schema_get_schema('schema_test_1');
     $comparison = schema_compare_table($schema);
     $this->assertEqual($comparison['status'], 'different', 'Table does not match its schema.');
   }

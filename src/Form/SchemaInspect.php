@@ -39,23 +39,25 @@ class SchemaInspect extends FormBase {
     $mods = module_list();
     sort($mods);
     $mods = array_flip($mods);
-    $schema = drupal_get_schema(NULL, TRUE);
+    $schema = schema_get_schema(TRUE);
     $inspect = schema_dbobject()->inspect();
     foreach ($inspect as $name => $table) {
       $module = isset($schema[$name]['module']) ? $schema[$name]['module'] : 'Unknown';
       if (!isset($build[$module])) {
         $build[$module] = array(
-          '#type' => 'fieldset',
-          '#access' => TRUE,
-          '#title' => check_plain($module),
-          '#collapsible' => TRUE,
-          '#collapsed' => ($module != 'Unknown'),
+          '#type' => 'details',
+          '#title' => $module,
+          '#open' => $module == 'Unknown',
           '#weight' => ($module == 'Unknown' ? 0 : $mods[$module]+1),
         );
       }
       $build[$module][$name] = array(
-        '#type' => 'markup',
-        '#markup' => '<textarea style="width:100%" rows="10">' . check_plain(schema_phpprint_table($name, $table)) . '</textarea>',
+        '#type' => 'textarea',
+        '#rows' => 10,
+        '#default_value' => schema_phpprint_table($name, $table),
+        '#attributes' => array(
+          'style' => 'width:100%;'
+        )
       );
     }
 

@@ -98,7 +98,7 @@ function drush_schema_compare_validate($type) {
 function drush_schema_compare($type) {
 
   // Get the defined database schema.
-  $schema = drupal_get_schema(NULL, TRUE);
+  $schema = schema_get_schema(TRUE);
 
   // Compare it with the actual database schema.
   $comparison = schema_compare_schemas($schema);
