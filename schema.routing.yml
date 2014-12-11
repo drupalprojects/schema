@@ -2,21 +2,21 @@ schema.compare:
   path: /admin/structure/schema
   defaults:
     _title: Schema
-    _form: \Drupal\schema\Form\SchemaCompare
+    _content: '\Drupal\schema\Controller\DefaultController::schema_compare'
   requirements:
     _permission: 'administer schema'
 schema.describe:
   path: /admin/structure/schema/describe
   defaults:
     _title: Describe
-    _form: \Drupal\schema\Form\SchemaDescribe
+    _content: '\Drupal\schema\Controller\DefaultController::schema_describe'
   requirements:
     _permission: 'administer schema'
 schema.inspect:
   path: /admin/structure/schema/inspect
   defaults:
     _title: Inspect
-    _form: \Drupal\schema\Form\SchemaInspect
+    _content: '\Drupal\schema\Controller\DefaultController::schema_inspect'
   requirements:
     _permission: 'administer schema'
 schema.sql:
