@@ -104,9 +104,7 @@ class SchemaCompare extends FormBase {
             $items = array();
             foreach ($tables as $name => $stuff) {
               $build[$state][$module][$name] = array(
-                '#type' => 'fieldset',
-                '#collapsible' => TRUE,
-                '#collapsed' => TRUE,
+                '#type' => 'details',
                 '#title' => $name,
               );
               $build[$state][$module][$name]['reasons'] = array(

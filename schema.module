@@ -4,9 +4,10 @@
  * @file
  * The Schema module provides functionality built on the Schema API.
  */
-use Drupal\Core\Database\Connection;
-use Drupal\Core\Database\Schema as DatabaseSchema;
+use Drupal\Core\Cache\Cache;
 use Drupal\Core\Database\Database;
+use Drupal\schema\SchemaManager;
+use Drupal\schema\SchemaProviderInterface;
 
 /**
  * Implements hooK_help().
@@ -163,13 +164,8 @@ function schema_phpprint_table($name, $table) {
 
 function schema_phpprint_column($col, $multiline=FALSE) {
   $attrs = array();
-  if (isset($col['description']) && $col['description']) {
-    $description = $col['description'];
-  }
-  else {
-    $description = t('TODO: please describe this field!');
-  }
-  unset($col['description']);
+  $description = isset($col['description']) ? $col['description'] : '';
+  //unset($col['description']);
   $attrs[] = "'description' => '$description'";
   if ($col['type'] == 'varchar' || $col['size'] == 'normal') {
     unset($col['size']);
@@ -378,7 +374,7 @@ function schema_compare_schemas($ref, $inspect = NULL) {
       $module = $table['module'];
     }
     else {
-      $module = '';
+      $module = 'Unknown';
     }
     if (!isset($inspect[$name])) {
       $info['missing'][$module][$name] = array('status' => 'missing');
@@ -530,61 +526,13 @@ function schema_compare_table($ref, $inspect = NULL) {
  * Computes and returns the complete schema for all the drupal things.
  */
 function schema_get_schema($rebuild = FALSE) {
-  $schema = drupal_get_schema(NULL, $rebuild);
-
-  // Add schema for content entities.
-  $entity_types = \Drupal::entityManager()->getDefinitions();
-  foreach ($entity_types as $entity_type) {
-    if ($entity_type instanceof \Drupal\Core\Entity\ContentEntityTypeInterface) {
-      $storage = \Drupal::entityManager()->getStorage($entity_type->id());
-      $class = $entity_type->getHandlerClass('storage_schema') ?: 'Drupal\Core\Entity\Sql\SqlContentEntityStorageSchema';
-      $storage_schema = new $class(\Drupal::entityManager(), $entity_type, $storage, \Drupal::database());
-      $table_mapping = $storage->getTableMapping();
-
-      // Build up entity schema from base tables, as well as shared and
-      // dedicated field tables. Too bad core doesn't this for us. :-/
-      $entity_schema = array();
-
-      // Use reflection to access protected methods.
-      $reflection = new ReflectionClass($class);
-      $entity_schema_method = $reflection->getMethod('getEntitySchema');
-      $entity_schema_method->setAccessible(TRUE);
-      $entity_schema += $entity_schema_method->invoke($storage_schema, $entity_type, $rebuild);
-
-      // Add schema for shared field tables
-      $field_types = \Drupal::entityManager()->getFieldStorageDefinitions($entity_type->id());
-      foreach ($field_types as $field_storage) {
-        if ($table_mapping->requiresDedicatedTableStorage($field_storage)) {
-          $entity_schema_method = $reflection->getMethod('getDedicatedTableSchema');
-          $entity_schema_method->setAccessible(TRUE);
-          $entity_schema += $entity_schema_method->invoke($storage_schema, $field_storage);
-        }
-        elseif ($table_mapping->allowsSharedTableStorage($field_storage)) {
-          $field_name = $field_storage->getName();
-          foreach (array_diff($table_mapping->getTableNames(), $table_mapping->getDedicatedTableNames()) as $table_name) {
-            if (in_array($field_name, $table_mapping->getFieldNames($table_name))) {
-              $column_names = $table_mapping->getColumnNames($field_name);
-
-              $entity_schema_method = $reflection->getMethod('getSharedTableFieldSchema');
-              $entity_schema_method->setAccessible(TRUE);
-              $entity_schema[$table_name] += $entity_schema_method->invoke($storage_schema, $field_storage, $table_name, $column_names);
-            }
-          }
-        }
-        else {
-          // Field uses custom storage which we cannot determine automatically.
-          // @todo Is this correct?
-        }
-      }
-
-      // Add module information, if it doesn't exist.
-      foreach ($entity_schema as $name => $table) {
-        if (!isset($table['module'])) {
-          $table['module'] = $entity_type->getProvider();
-        }
-        $schema[$name] = $table;
-      }
-    }
+  /** @var SchemaManager $manager */
+  $manager = Drupal::service('plugin.manager.schema');
+  $plugins = $manager->createInstances();
+  $complete_schema = array();
+  /** @var SchemaProviderInterface $plugin */
+  foreach ($plugins as $plugin) {
+    $complete_schema += $plugin->get($rebuild);
   }
-  return $schema;
+  return $complete_schema;
 }
