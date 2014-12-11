@@ -14,6 +14,7 @@ function schema_drush_command() {
   // the key in the $items array is the name of the command.
   $items['schema-inspect'] = array(
     'description' => "Show the Drupal schema definition for table(s)",
+    'category' => 'schema',
     'arguments' => array(
       'tables' => 'A comma delimited list of table names',
     ),
@@ -24,6 +25,7 @@ function schema_drush_command() {
 
   $items['schema-compare'] = array(
     'description' => "List tables that match, mismatch, are missing or are extra",
+    'category' => 'schema',
     'arguments' => array(
       'type' => 'The type of tables to list, one of "match", "mismatch", "missing" or "extra".',
     ),
@@ -73,12 +75,12 @@ function drush_schema_inspect() {
 /*
  * Implementats drush_hook_COMMAND_validate().
  */
-function drush_schema_compare_validate($type) {
+function drush_schema_compare_validate($type = FALSE) {
 
   // Define the possible table types.
   $types = array(
-    'match',
-    'mismatch',
+    'match', 'same',
+    'mismatch', 'different',
     'missing',
     'extra',
   );
