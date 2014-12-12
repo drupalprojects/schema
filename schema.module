@@ -468,11 +468,11 @@ function schema_compare_table($ref, $inspect = NULL) {
       }
     }
     if (count($kdiffs) != 0) {
-      $reasons[] = "column $colname - difference" .
+      $reasons[] = array('#markup' => "column $colname - difference" .
           ( count($kdiffs) > 1 ? 's' : '') . " on: " .
           implode(', ', $kdiffs) . "<br/>declared: " .
           schema_phpprint_column($col) . '<br/>actual: ' .
-          schema_phpprint_column($inspect['fields'][$colname]);
+          schema_phpprint_column($inspect['fields'][$colname]));
     }
     unset($inspect['fields'][$colname]);
   }
@@ -485,7 +485,7 @@ function schema_compare_table($ref, $inspect = NULL) {
       $reasons[] = "primary key: missing in database";
     }
     elseif ($ref['primary key'] !== $inspect['primary key']) {
-      $reasons[] = ("primary key:<br />declared: " .
+      $reasons[] = array('#markup' => "primary key:<br />declared: " .
         schema_phpprint_key($ref['primary key']) . '<br />actual: ' .
         schema_phpprint_key($inspect['primary key']));
     }
