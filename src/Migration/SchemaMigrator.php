@@ -50,7 +50,14 @@ class SchemaMigrator {
   }
 
   public function execute() {
-    $tables = $this->comparison->getDifferentTables();
+    $tables = $this->getTargetTables();
+    if ($this->options()->useDifferentTables) {
+      $tables += $this->comparison->getDifferentTables();
+    }
+    if ($this->options()->useSameTables) {
+      $tables += $this->comparison->getSameTables();
+    }
+
     /** @var TableComparison $table */
     foreach ($tables as $table) {
       if ($this->options()->fixTableComments) {
@@ -65,7 +72,24 @@ class SchemaMigrator {
       if ($this->options()->removeExtraColumns) {
         $this->removeExtraColumns($table);
       }
+      if ($this->options()->recreatePrimaryKey) {
+        $this->recreatePrimaryKey($table);
+      }
+      if ($this->options()->recreateIndexes) {
+        $this->recreateIndexes($table);
+      }
     }
+  }
+
+  protected function getTargetTables() {
+    $tables = array();
+    if ($this->options()->useDifferentTables) {
+      $tables += $this->comparison->getDifferentTables();
+    }
+    if ($this->options()->useSameTables) {
+      $tables += $this->comparison->getSameTables();
+    }
+    return $tables;
   }
 
   public function options() {
@@ -158,6 +182,81 @@ class SchemaMigrator {
       drush_log($this->logMessageInterpolate($message, $context), 'error');
     }
     $this->logger->error($message, $context);
+  }
+
+  /**
+   * @param $table TableComparison
+   */
+  protected function recreatePrimaryKey($table) {
+    $primary_key = $table->getDeclaredPrimaryKey();
+    $msg_args = array(
+      'table' => $table->getTableName(),
+      'key' => is_array($primary_key) ? implode(', ', $primary_key) : '[]',
+    );
+
+    // If primary key exists already, recreate it.
+    if ($this->dbschema->indexExists($table->getTableName(), 'PRIMARY') && is_array($primary_key)) {
+      $this->dbschema->recreatePrimaryKey($table->getTableName(), $primary_key);
+      $this->logSuccess("Recreated primary key for {table} on {key}.", $msg_args);
+    }
+
+    // If primary key exists, but we don't want to have one, try to drop it.
+    elseif ($this->dbschema->indexExists($table->getTableName(), 'PRIMARY')) {
+      log_statement("TABLE %s DROP PRIMARY KEY", $table->getTableName());
+      if ($this->dbschema->dropPrimaryKey($table->getTableName())) {
+        $this->logSuccess("Dropped primary key for {table}.", $msg_args);
+      }
+      else {
+        $this->logError("Failed to drop primary key for {table}.", $msg_args);
+      }
+    }
+
+    // If primary key doesn't exit, try to create it.
+    elseif (is_array($primary_key)) {
+      $this->dbschema->addPrimaryKey($table->getTableName(), $primary_key);
+      $this->logSuccess("Created primary key for {table} on {key}.", $msg_args);
+    }
+  }
+
+  /**
+   * @param $table TableComparison
+   */
+  protected function recreateIndexes($table) {
+    // Recreate indices by first removing all, then adding them one by one.
+    $existing = $this->dbschema->getIndexes($table->getTableName());
+    $count = 0;
+    foreach ($existing as $index) {
+      $this->dbschema->dropIndex($table, $index);
+      $this->logSuccess("Dropped index {index} from {table}.", array(
+        'table' => $table->getTableName(),
+        'index' => $index,
+      ));
+      $count++;
+    }
+    if ($count > 0) {
+      $this->logSuccess("Dropped {num} existing indexes from {table}.", array(
+        'table' => $table->getTableName(),
+        'num' => $count,
+      ));
+    }
+
+    $indexes = $table->getDeclaredIndexes($this->options()->recreateExtraIndexes);
+    foreach ($indexes['indexes'] as $i_name => $fields) {
+      $this->dbschema->addIndex($table, $i_name, $fields);
+      $this->logSuccess("Added index {index} to {table} on {keys}.", array(
+        'table' => $table->getTableName(),
+        'index' => $i_name,
+        'keys' => '[' . implode(', ', $fields) . ']',
+      ));
+    }
+    foreach ($indexes['unique keys'] as $i_name => $fields) {
+      $this->dbschema->addUniqueKey($table, $i_name, $fields);
+      $this->logSuccess("Added index {index} to {table} on {keys}.", array(
+        'table' => $table->getTableName(),
+        'index' => $i_name,
+        'keys' => '[' . implode(', ', $fields) . ']',
+      ));
+    }
   }
 
 }

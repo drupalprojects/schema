@@ -139,8 +139,31 @@ class TableComparison {
     return $this->fields_missing;
   }
 
-  public function getDifferentIndexes() {
-    return $this->index_diff;
+  public function getDeclaredPrimaryKey() {
+    return isset($this->schema['primary key']) ? $this->schema['primary key'] : FALSE;
+  }
+
+  /**
+   * Get all declared indexes for this table.
+   *
+   * @param bool $include_extra
+   *   Also include extra indexes, i.e. indexes which are present in the
+   *   database but missing from the declared schema.
+   * @return array
+   */
+  public function getDeclaredIndexes($include_extra = FALSE) {
+    $indexes = array(
+      'indexes' => isset($this->schema['indexes']) ? $this->schema['indexes'] : array(),
+      'unique keys' => isset($this->schema['unique keys']) ? $this->schema['unique keys'] : array(),
+    );
+    if ($include_extra) {
+      /** @var ExtraIndex $index */
+      foreach ($this->getExtraIndexes() as $index) {
+        $type = $index->getType() == 'UNIQUE' ? 'unique keys' : 'indexes';
+        $indexes[$type][$index->getIndexName()] = $index->getSchema();
+      }
+    }
+    return $indexes;
   }
 
   public function getExtraIndexes() {
@@ -149,5 +172,9 @@ class TableComparison {
 
   public function getMissingIndexes() {
     return $this->index_missing;
+  }
+
+  public function getDifferentIndexes() {
+    return $this->index_diff;
   }
 }
