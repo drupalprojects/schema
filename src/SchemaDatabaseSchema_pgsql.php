@@ -8,7 +8,7 @@ namespace Drupal\schema;
 
 use Drupal\Core\Database\Driver\pgsql\Schema as DatabaseSchema_pgsql;
 
-class SchemaDatabaseSchema_pgsql extends DatabaseSchema_pgsql {
+class SchemaDatabaseSchema_pgsql extends DatabaseSchema_pgsql implements DatabaseSchemaInspectionInterface {
   /**
    * Retrieve generated SQL to create a new table from a Drupal schema definition.
    *

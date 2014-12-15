@@ -6,9 +6,10 @@ namespace Drupal\schema;
  * Schema module enhancements to DatabaseSchema_mysql
  */
 
+use Drupal\Component\Utility\Unicode;
 use Drupal\Core\Database\Driver\mysql\Schema as DatabaseSchema_mysql;
 
-class SchemaDatabaseSchema_mysql extends DatabaseSchema_mysql {
+class SchemaDatabaseSchema_mysql extends DatabaseSchema_mysql implements DatabaseSchemaInspectionInterface {
   /**
    * Retrieve generated SQL to create a new table from a Drupal schema definition.
    *
@@ -31,27 +32,7 @@ class SchemaDatabaseSchema_mysql extends DatabaseSchema_mysql {
     return $map;
   }
 
-  /**
-   * Overrides DatabaseSchema_mysql::getPrefixInfo().
-   *
-   * @todo Remove when https://drupal.org/node/2223073 is fixed in core.
-   */
-  protected function getPrefixInfo($table = 'default', $add_prefix = TRUE) {
-    $info = array('prefix' => $this->connection->tablePrefix($table));
-    if ($add_prefix) {
-      $table = $info['prefix'] . $table;
-    }
-    if (($pos = strpos($table, '.')) !== FALSE) {
-      $info['database'] = substr($table, 0, $pos);
-      $info['table'] = substr($table, ++$pos);
-    }
-    else {
-      $db_info = $this->connection->getConnectionOptions();
-      $info['database'] = $db_info['database'];
-      $info['table'] = $table;
-    }
-    return $info;
-  }
+
 
   /**
    * Overrides DatabaseSchema_mysql::getFieldTypeMap().
@@ -60,9 +41,34 @@ class SchemaDatabaseSchema_mysql extends DatabaseSchema_mysql {
     $map = &drupal_static('SchemaDatabaseSchema_mysql::getFieldTypeMap');
     if (!isset($map)) {
       $map = parent::getFieldTypeMap();
-      \Drupal::moduleHandler()->alter('schema_field_type_map', $map, $this, $this->connection);
+      \Drupal::moduleHandler()
+        ->alter('schema_field_type_map', $map, $this, $this->connection);
     }
     return $map;
+  }
+
+  public function prepareTableComment($comment, $pdo_quote = TRUE) {
+    // Truncate comment to maximum comment length.
+    $comment = Unicode::truncate($this->connection->prefixTables($comment), DatabaseSchema_mysql::COMMENT_MAX_TABLE, TRUE, TRUE);
+    if ($pdo_quote) {
+      return $this->connection->quote($comment);
+    }
+    return $comment;
+  }
+
+  public function prepareColumnComment($comment, $pdo_quote = TRUE) {
+    // Truncate comment to maximum comment length.
+    $comment = Unicode::truncate($this->connection->prefixTables($comment), DatabaseSchema_mysql::COMMENT_MAX_COLUMN, TRUE, TRUE);
+    if ($pdo_quote) {
+      return $this->connection->quote($comment);
+    }
+    return $comment;
+  }
+
+  public function updateTableComment($table_name, $comment) {
+    $table_name = $this->getPrefixInfo($table_name)['table'];
+    $sql = 'ALTER TABLE {' . $table_name . '} COMMENT ' . $this->prepareTableComment($comment);
+    $this->connection->query($sql);
   }
 
   public function inspect($connection = NULL, $table_name = NULL) {
@@ -99,7 +105,7 @@ class SchemaDatabaseSchema_mysql extends DatabaseSchema_mysql {
     }
 
     $sql = 'SELECT table_name, column_type, column_name, column_default,
-                   extra, is_nullable, numeric_scale, column_comment
+                   extra, is_nullable, numeric_scale, column_comment, collation_name
             FROM information_schema.columns
             WHERE table_schema=:database ';
     if (isset($table_name)) {
@@ -130,11 +136,12 @@ class SchemaDatabaseSchema_mysql extends DatabaseSchema_mysql {
         }
       }
       if ($col['type'] == 'int' && isset($r->extra) &&
-          $r->extra == 'auto_increment') {
+        $r->extra == 'auto_increment'
+      ) {
         $col['type'] = 'serial';
       }
       $col['not null'] = ($r->is_nullable == 'YES' ? FALSE : TRUE);
-      if (! is_null($r->column_default)) {
+      if (!is_null($r->column_default)) {
         if ($numeric) {
           // XXX floats!
           $col['default'] = intval($r->column_default);
@@ -144,7 +151,11 @@ class SchemaDatabaseSchema_mysql extends DatabaseSchema_mysql {
         }
       }
       $col['description'] = $r->column_comment;
+      if (substr($r->collation_name, -4) == '_bin') {
+        $col['binary'] = TRUE;
+      }
       $tables[$r->table_name]['fields'][$r->column_name] = $col;
+
       // At this point, $tables is indexed by the raw db table name - save the unprefixed
       // name for later use
       $tables[$r->table_name]['name'] = $r->new_table_name;
@@ -190,6 +201,28 @@ class SchemaDatabaseSchema_mysql extends DatabaseSchema_mysql {
     }
 
     return $tables;
+  }
+
+  /**
+   * Overrides DatabaseSchema_mysql::getPrefixInfo().
+   *
+   * @todo Remove when https://drupal.org/node/2223073 is fixed in core.
+   */
+  protected function getPrefixInfo($table = 'default', $add_prefix = TRUE) {
+    $info = array('prefix' => $this->connection->tablePrefix($table));
+    if ($add_prefix) {
+      $table = $info['prefix'] . $table;
+    }
+    if (($pos = strpos($table, '.')) !== FALSE) {
+      $info['database'] = substr($table, 0, $pos);
+      $info['table'] = substr($table, ++$pos);
+    }
+    else {
+      $db_info = $this->connection->getConnectionOptions();
+      $info['database'] = $db_info['database'];
+      $info['table'] = $table;
+    }
+    return $info;
   }
 
 }

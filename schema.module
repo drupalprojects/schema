@@ -4,8 +4,9 @@
  * @file
  * The Schema module provides functionality built on the Schema API.
  */
-use Drupal\Core\Cache\Cache;
 use Drupal\Core\Database\Database;
+use Drupal\schema\Comparison\SchemaComparisonInfoBuilder;
+use Drupal\schema\Comparison\SchemaComparator;
 use Drupal\schema\SchemaManager;
 use Drupal\schema\SchemaProviderInterface;
 
@@ -40,7 +41,7 @@ function schema_help($path, $arg) {
  * @param string $connection
  *   A database connection key, defaults to 'default'.
  *
- * @return
+ * @return string
  *   The schema engine class name if available, otherwise FALSE.
  */
 function schema_get_connection_engine_class($connection = 'default') {
@@ -62,7 +63,7 @@ function schema_get_connection_engine_class($connection = 'default') {
  *   A database connection key, defaults to the schema_database_connection
  *   variable, which itself defaults to 'default'.
  *
- * @return object
+ * @return Drupal\schema\DatabaseSchemaInspectionInterface
  *   A schema engine class set to the given connection.
  */
 function schema_dbobject($connection = NULL) {
@@ -165,7 +166,7 @@ function schema_phpprint_table($name, $table) {
 function schema_phpprint_column($col, $multiline=FALSE) {
   $attrs = array();
   $description = isset($col['description']) ? $col['description'] : '';
-  //unset($col['description']);
+  unset($col['description']);
   $attrs[] = "'description' => '$description'";
   if ($col['type'] == 'varchar' || $col['size'] == 'normal') {
     unset($col['size']);
@@ -297,99 +298,20 @@ function schema_schema_type($type, $table, $field, $engine = NULL) {
 
 /**
  * Compares two complete schemas.
- * @param $ref is considered the reference copy
- * @param $inspect is compared against it.  If $inspect is NULL, a
+ * @param $ref array is considered the reference copy
+ * @param $inspect array is compared against it.  If $inspect is NULL, a
  *         schema for the active database is generated and used.
+ *
+ * @deprecated Returns array structure, for backwards compatibility only.
  */
 function schema_compare_schemas($ref, $inspect = NULL) {
   if (!isset($inspect)) {
     $inspect = schema_dbobject()->inspect();
   }
-
-  $info = array();
-
-  // Error checks to consider adding:
-  // All type serial columns must be in an index or key.
-  // All columns in a primary or unique key must be NOT NULL.
-
-  // Error check: column type and default type must match
-  foreach ($ref as $t_name => $table) {
-    if (!isset($table['fields']) || !is_array($table['fields'])) {
-      drupal_set_message(t('Table %table: Missing or invalid \'fields\' array.', array('%table' => $t_name)), 'warning');
-      continue;
-    }
-
-    foreach ($table['fields'] as $c_name => $col) {
-      switch ($col['type']) {
-        case 'int':
-        case 'float':
-        case 'numeric':
-          if (isset($col['default']) &&
-            (! is_numeric($col['default']) || is_string($col['default']))) {
-            $info['warn'][] = t('%table.%column is type %type but its default %default is PHP type %phptype', array('%table' => $t_name, '%column' => $c_name, '%type' => $col['type'], '%default' => $col['default'], '%phptype' => gettype($col['default'])));
-          }
-          break;
-
-        default:
-          if (isset($col['default']) && !is_string($col['default'])) {
-            $info['warn'][] = t('%table.%column is type %type but its default %default is PHP type %phptype', array('%table' => $t_name, '%column' => $c_name, '%type' => $col['type'], '%default' => $col['default'], '%phptype' => gettype($col['default'])));
-          }
-          break;
-      }
-    }
-  }
-
-  // Error check: 'text' and 'blob' columns cannot have a default value
-  foreach ($ref as $t_name => $table) {
-    if (!isset($table['fields'])) {
-      continue;
-    }
-
-    foreach ($table['fields'] as $c_name => $col) {
-      switch ($col['type']) {
-        case 'text':
-        case 'blob':
-          if (isset($col['default'])) {
-            $info['warn'][] = t('%table.%column is type %type and may not have a default value', array('%table' => $t_name, '%column' => $c_name, '%type' => $col['type']));
-          }
-          break;
-      }
-    }
-  }
-
-  // Error check: primary keys must be 'not null'
-  foreach ($ref as $t_name => $table) {
-    if (isset($table['primary key'])) {
-      $keys = db_field_names($table['primary key']);
-      foreach ($keys as $key) {
-        if (!isset($table['fields'][$key]['not null']) || $table['fields'][$key]['not null'] != TRUE) {
-          $info['warn'][] = t('%table.%column is part of the primary key but is not specified to be \'not null\'.', array('%table' => $t_name, '%column' => $key));
-        }
-      }
-    }
-  }
-
-  foreach ($ref as $name => $table) {
-    if (isset($table['module'])) {
-      $module = $table['module'];
-    }
-    else {
-      $module = 'Unknown';
-    }
-    if (!isset($inspect[$name])) {
-      $info['missing'][$module][$name] = array('status' => 'missing');
-    }
-    else {
-      $status = schema_compare_table($table, $inspect[$name]);
-      $info[$status['status']][$module][$name] = $status;
-      unset($inspect[$name]);
-    }
-  }
-
-  foreach ($inspect as $name => $table) {
-    $info['extra'][] = $name;
-  }
-  return $info;
+  $comparator = new SchemaComparator($ref, schema_dbobject());
+  $result = $comparator->execute();
+  $result = new SchemaComparisonInfoBuilder($result);
+  return $result->getInfoArray();
 }
 
 /**
@@ -397,6 +319,8 @@ function schema_compare_schemas($ref, $inspect = NULL) {
  * module's hook_schema) to an inspected specification from the
  * database.
  * @param $inspect if not provided, the database is inspected.
+ *
+ * @todo Refactor SchemaComparator and call from this function.
  */
 function schema_compare_table($ref, $inspect = NULL) {
   $_db_type = db_driver();
@@ -413,8 +337,18 @@ function schema_compare_table($ref, $inspect = NULL) {
   }
 
   $reasons = $notes = array();
-  $col_keys = array_flip(
-    array('type', 'size', 'not null', 'length', 'unsigned', 'default', 'scale', 'precision'));
+  $col_keys = array_flip(array(
+    'description',
+    'type',
+    'serialize',
+    'size',
+    'not null',
+    'default',
+    'length',
+    'unsigned',
+    'precision', 'scale',
+    'binary',
+  ));
   foreach ($ref['fields'] as $colname => $col) {
 
     // Many Schema types can map to the same engine type (e.g. in
@@ -534,5 +468,6 @@ function schema_get_schema($rebuild = FALSE) {
   foreach ($plugins as $plugin) {
     $complete_schema += $plugin->get($rebuild);
   }
+
   return $complete_schema;
 }
