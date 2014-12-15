@@ -131,7 +131,8 @@ class SchemaMigrator {
    * @param $table TableComparison
    */
   protected function updateColumnProperties($table) {
-    if (!empty($differences = $table->getDifferentColumns())) {
+    $differences = $table->getDifferentColumns();
+    if (!empty($differences)) {
       /** @var DifferentColumn $column */
       foreach ($differences as $column) {
         // The schema comparator has already determined that the field exists
@@ -158,7 +159,8 @@ class SchemaMigrator {
    * @param $table TableComparison
    */
   protected function removeExtraColumns($table) {
-    if (!empty($extra_columns = $table->getExtraColumns())) {
+    $extra_columns = $table->getExtraColumns();
+    if (!empty($extra_columns)) {
       /** @var ExtraColumn $column */
       foreach ($extra_columns as $column) {
         if ($this->dbschema->dropField($column->getTableName(), $column->getColumnName())) {
@@ -226,7 +228,7 @@ class SchemaMigrator {
     $existing = $this->dbschema->getIndexes($table->getTableName());
     $count = 0;
     foreach ($existing as $index) {
-      $this->dbschema->dropIndex($table, $index);
+      $this->dbschema->dropIndex($table->getTableName(), $index);
       $this->logSuccess("Dropped index {index} from {table}.", array(
         'table' => $table->getTableName(),
         'index' => $index,
@@ -242,7 +244,7 @@ class SchemaMigrator {
 
     $indexes = $table->getDeclaredIndexes($this->options()->recreateExtraIndexes);
     foreach ($indexes['indexes'] as $i_name => $fields) {
-      $this->dbschema->addIndex($table, $i_name, $fields);
+      $this->dbschema->addIndex($table->getTableName(), $i_name, $fields);
       $this->logSuccess("Added index {index} to {table} on {keys}.", array(
         'table' => $table->getTableName(),
         'index' => $i_name,
@@ -250,7 +252,7 @@ class SchemaMigrator {
       ));
     }
     foreach ($indexes['unique keys'] as $i_name => $fields) {
-      $this->dbschema->addUniqueKey($table, $i_name, $fields);
+      $this->dbschema->addUniqueKey($table->getTableName(), $i_name, $fields);
       $this->logSuccess("Added index {index} to {table} on {keys}.", array(
         'table' => $table->getTableName(),
         'index' => $i_name,
@@ -260,3 +262,4 @@ class SchemaMigrator {
   }
 
 }
+

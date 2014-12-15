@@ -35,6 +35,11 @@ class SchemaManager extends DefaultPluginManager {
     $this->factory = new DefaultFactory($this, 'Drupal\schema\SchemaProviderInterface');
   }
 
+  /**
+   * Instantiates all plugins.
+   *
+   * @return array
+   */
   public function createInstances() {
     $plugins = array();
     $definitions = $this->getDefinitions();
