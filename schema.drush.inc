@@ -167,7 +167,8 @@ function drush_schema_fix() {
     ->setUpdateColumnProperties(TRUE)
     ->setRemoveExtraColumns(TRUE)
     ->setRecreatePrimaryKey(TRUE)
-    ->setRecreateIndexes(TRUE);
+    ->setRecreateIndexes(TRUE)
+    ->setRecreateExtraIndexes(FALSE);
   $migrator->execute();
 }
 
