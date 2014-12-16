@@ -79,8 +79,10 @@ function drush_schema_compare_validate($type = FALSE) {
 
   // Define the possible table types.
   $types = array(
-    'match', 'same',
-    'mismatch', 'different',
+    'match',
+    'same',
+    'mismatch',
+    'different',
     'missing',
     'extra',
   );
@@ -109,13 +111,13 @@ function drush_schema_compare($type) {
   switch ($type) {
     case 'match':
       $type = 'same';
-    break;
+      break;
     case 'mismatch':
       $type = 'different';
-    break;
+      break;
     default:
       // Type ID is the same; it doesn't need to be changed.
-    break;
+      break;
   }
 
   // Different classes of tables must be handled differently.
@@ -132,7 +134,7 @@ function drush_schema_compare($type) {
             drush_print($module . ": " . $table);
           }
         }
-      break;
+        break;
 
       // These table types have no modules associated with them.
       // Display the table names only.
