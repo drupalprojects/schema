@@ -36,6 +36,13 @@ function schema_drush_command() {
       'drush schema-compare extra' => 'List all tables in the database whose schema definitions do not exist.',
     ),
   );
+
+  $items['schema-fix'] = array(
+    'description' => "Attempt to fix incorrect table definitions",
+    'category' => 'schema',
+    'arguments' => array(),
+    'examples' => array(),
+  );
   return $items;
 }
 
@@ -48,6 +55,8 @@ function schema_drush_help($section) {
       return dt("Show the Drupal schema definition for table(s).");
     case 'drush:schema-compare':
       return dt("List tables that match, mismatch, are missing or are extra.");
+    case 'drush:schema-fix':
+      return dt("Attempts to fix incorrect table definitions.");
   }
 }
 
@@ -142,8 +151,23 @@ function drush_schema_compare($type) {
         foreach ($comparison[$type] as $table) {
           drush_print($table);
         }
-      break;
+        break;
     }
   }
+}
+
+/**
+ * Implements drush_COMMANDFILE_COMMANDNAME().
+ */
+function drush_schema_fix() {
+  $comparison = \Drupal\schema\Comparison\SchemaComparator::compareDefault();
+  $migrator = new \Drupal\schema\Migration\SchemaMigrator($comparison, schema_dbobject());
+  $migrator->options()
+    ->setFixTableComments(TRUE)
+    ->setUpdateColumnProperties(TRUE)
+    ->setRemoveExtraColumns(TRUE)
+    ->setRecreatePrimaryKey(TRUE)
+    ->setRecreateIndexes(TRUE);
+  $migrator->execute();
 }
 
