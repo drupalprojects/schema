@@ -60,7 +60,7 @@ class SchemaDatabaseSchema_mysql extends DatabaseSchema_mysql implements Databas
   }
 
   public function getIndexes($table_name) {
-    return $this->connection->query("SHOW INDEX FROM $table_name WHERE Key_name != 'PRIMARY';")
+    return $this->connection->query('SHOW INDEX FROM {' . $table_name . '} WHERE Key_name != \'PRIMARY\';')
       ->fetchCol(2);
   }
 

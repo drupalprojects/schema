@@ -1,36 +1,56 @@
 <?php
-
 /**
-* @file
-* Install, update and uninstall functions for the schema module.
-*/
+ * @file
+ * Install, update and uninstall functions for the schema module.
+ */
+
+use Drupal\Core\Url;
 
 /**
  * Implementation of hook_requirements().
- * Checks installation requirements and do status reporting.
- * @param phase 'install': ignored (no installation requirements)
- *              'runtime': status reporting for database
- * @return A keyed array of requirements
- * @see schema_compare_schemas()
  */
 function schema_requirements($phase) {
-  return; // @fixme
   $reqs = array();
   $t = 't';
-  if ($phase == 'runtime' && \Drupal::config('schema.settings')->get('schema_status_report')) {
+  $schema_status_report = \Drupal::config('schema.settings')
+    ->get('schema_status_report');
+  if ($phase == 'runtime' && $schema_status_report) {
+    // Make sure these are defined in increasing-severity order.
+    $checks = array(
+      'same' => array(
+        REQUIREMENT_OK,
+        'Consistent',
+        '@count modules with matching tables'
+      ),
+      'extra' => array(
+        REQUIREMENT_OK,
+        'Extra tables',
+        '@count extra tables'
+      ),
+      'warn' => array(
+        REQUIREMENT_WARNING,
+        'Warning',
+        '@count warnings'
+      ),
+      'missing' => array(
+        REQUIREMENT_ERROR,
+        'Inconsistent',
+        '@count modules with missing tables'
+      ),
+      'different' => array(
+        REQUIREMENT_ERROR,
+        'Inconsistent',
+        '@count modules with mis-matching tables'
+      ),
+    );
+
+    // Use first entry as default value.
+    list($severity, $status,) = extract(reset($checks));
+
+    // Load and compare schema, then set requirement according to the results.
     $schema = schema_get_schema(TRUE);
     $info = schema_compare_schemas($schema);
-    // make sure these are defined in increasing-severity order
-    $checks = array(
-      'same' => array(REQUIREMENT_OK, 'Consistent', '@count modules with matching tables'),
-      'extra' => array(REQUIREMENT_OK, 'Extra tables', '@count extra tables'),
-      'warn' => array(REQUIREMENT_WARNING, 'Warning', '@count warnings'),
-      'missing' => array(REQUIREMENT_ERROR, 'Inconsistent', '@count modules with missing tables'),
-      'different' => array(REQUIREMENT_ERROR, 'Inconsistent', '@count modules with mis-matching tables'),
-      );
-
     $notes = array();
-    $severity = REQUIREMENT_OK;
     foreach ($checks as $key => $data) {
       if (!empty($info[$key])) {
         $severity = $data[0];
@@ -39,40 +59,36 @@ function schema_requirements($phase) {
       }
     }
 
-    $desc = ''; // if there is only one note, it is for 'same'
+    $desc = array();
+    // If there is only one note, it is for 'same'.
     if (count($notes) > 1) {
-      $desc = $t('The Schema comparison report shows: ') .
-        _theme('item_list', array('items' => $notes));
+      $desc['notes_title'] = array(
+        '#markup' => $t('The Schema comparison report shows: ')
+      );
+      $desc['notes'] = array('#theme' => 'item_list', '#items' => $notes);
     }
+
     if ($severity != REQUIREMENT_OK) {
       $sys_reqs = system_requirements($phase);
-      if ($sys_reqs['update']['severity'] != REQUIREMENT_OK) {
-        // @FIXME
-// url() expects a route name or an external URI.
-// $desc .= $t('You should follow the instructions under <strong>@title</strong>
-//             now or run the <a href="@compare">database schema comparison report</a>
-//             for more details.',
-//           array(
-//             '@title' => $sys_reqs['update']['title'],
-//             '@compare' => url('admin/structure/schema/compare')
-//           ));
-
+      if (isset($sys_reqs['update']['severity']) && $sys_reqs['update']['severity'] != REQUIREMENT_OK) {
+        $help_text = $t('You should follow the instructions under <strong>@title</strong> now or run the <a href="@compare">database schema comparison report</a> for more details.', array(
+          '@title' => $sys_reqs['update']['#title'],
+          '@compare' => Url::fromRoute('schema.compare'),
+        ));
       }
       else {
-        // @FIXME
-// url() expects a route name or an external URI.
-// $desc .= $t('The <a href="@compare">database schema comparison report</a>
-//             provides more details.',
-//           array('@compare' => url('admin/structure/schema/compare')));
-
+        $help_text = $t('The <a href="@compare">database schema comparison report</a> provides more details.', array(
+          '@compare' => Url::fromRoute('schema.compare'),
+        ));
       }
+      $desc['notes_help'] = array('#markup' => $help_text);
     }
     $reqs['schema'] = array(
       'title' => $t('Database schema'),
       'value' => $status,
       'severity' => $severity,
       'description' => $desc,
-      );
+    );
   }
 
   return $reqs;
@@ -83,5 +99,7 @@ function schema_requirements($phase) {
  */
 function schema_uninstall() {
   \Drupal::config('schema.settings')->clear('schema_status_report')->save();
-  \Drupal::config('schema.settings')->clear('schema_suppress_type_warnings')->save();
+  \Drupal::config('schema.settings')
+    ->clear('schema_suppress_type_warnings')
+    ->save();
 }
