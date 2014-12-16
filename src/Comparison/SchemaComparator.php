@@ -317,7 +317,7 @@ class SchemaComparator {
 
     // Keep track of extra columns in database.
     foreach ($inspect['fields'] as $colname => $col) {
-      $result->addExtraColumn($ref_name, $colname, $col);
+      $result->addExtraColumn($colname, $col);
     }
 
     if (isset($ref['primary key'])) {
