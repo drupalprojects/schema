@@ -180,7 +180,9 @@ class SchemaDatabaseSchema_mysql extends DatabaseSchema_mysql implements Databas
           $col['default'] = $r->column_default;
         }
       }
-      $col['description'] = $r->column_comment;
+      if (!empty($r->column_comment)) {
+        $col['description'] = $r->column_comment;
+      }
       if (substr($r->collation_name, -4) == '_bin') {
         $col['binary'] = TRUE;
       }

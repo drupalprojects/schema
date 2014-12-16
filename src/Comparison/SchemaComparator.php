@@ -68,15 +68,15 @@ class SchemaComparator {
    * Generates comparison information and stores it in the $result field.
    */
   protected function executeCompare() {
-    // Make sure declared schema is consistent.
-    $this->preprocessSchema($this->declared_schema);
-
     // Retrieve complete database schema.
     $inspect = $this->inspector->inspect();
 
     foreach ($this->declared_schema as $t_name => $table) {
       // Check declared schema for inconsistencies.
       $this->checkTable($t_name, $table);
+
+      // Fix inconsistencies which we do not want to show up as differences.
+      $this->preprocessTableSchema($t_name, $table);
 
       // See if table exists in database and compare against schema if it does.
       if (!isset($inspect[$t_name])) {
@@ -91,60 +91,6 @@ class SchemaComparator {
     // Mark remaining tables as extra tables, which are only in the database.
     foreach ($inspect as $name => $table) {
       $this->result->addExtraTable($name, $table);
-    }
-  }
-
-  /**
-   * Make sure the given schema is consistent.
-   *
-   * @param $schema
-   */
-  protected function preprocessSchema(&$schema) {
-    $_db_type = db_driver();
-
-    foreach ($schema as $t_name => &$table) {
-
-      $primary_key = empty($table['primary key']) ? array() : $table['primary key'];
-      foreach ($table['fields'] as $f_name => &$field) {
-        // Make sure that schema respects that columns which are part of the
-        // primary key cannot be NULL.
-        if (in_array($f_name, $primary_key)) {
-          $field['not null'] = TRUE;
-        }
-
-        // Many Schema types can map to the same engine type (e.g. in
-        // PostgresSQL, text:{small,medium,big} are all just text).  When
-        // we inspect the database, we see the common type, but the
-        // reference we are comparing against can have a specific type.
-        // We therefore run the reference's specific type through the
-        // type conversion cycle to get its common type for comparison.
-        //
-        // Sadly, we need a special-case hack for 'serial'.
-        $serial = ($field['type'] == 'serial' ? TRUE : FALSE);
-        $name = isset($table['name']) ? $table['name'] : $t_name;
-        $dbtype = schema_engine_type($field, $name, $f_name);
-        list($field['type'], $field['size']) = schema_schema_type($dbtype, $name, $f_name);
-        if ($serial) {
-          $field['type'] = 'serial';
-        }
-
-        // If an engine-specific type is specified, use it.  XXX $inspect
-        // will contain the schema type for the engine type, if one
-        // exists, whereas dbtype_type contains the engine type.
-        if (isset($field[$_db_type . '_type'])) {
-          $field['type'] = $field[$_db_type . '_type'];
-        }
-
-        // Schema inspection always sets the column description. Make sure the
-        // declared schema also always has a value so we can properly compare
-        // "empty" values.
-        if (empty($field['description'])) {
-          $field['description'] = '';
-        }
-        else {
-          $field['description'] = $this->inspector->prepareColumnComment($field['description'], FALSE);
-        }
-      }
     }
   }
 
@@ -226,11 +172,65 @@ class SchemaComparator {
       $keys = db_field_names($table['primary key']);
       foreach ($keys as $key) {
         if (!isset($table['fields'][$key]['not null']) || $table['fields'][$key]['not null'] != TRUE) {
-          $info['warn'][] = t('%table.%column is part of the primary key but is not specified to be \'not null\'.', array(
+          $this->result->addWarning(t('%table.%column is part of the primary key but is not specified to be \'not null\'.', array(
             '%table' => $t_name,
             '%column' => $key
-          ));
+          )));
         }
+      }
+    }
+  }
+
+  /**
+   * Make sure the given schema is consistent.
+   *
+   * @param $t_name
+   * @param $table
+   */
+  protected function preprocessTableSchema($t_name, &$table) {
+    $_db_type = db_driver();
+
+    $primary_key = empty($table['primary key']) ? array() : $table['primary key'];
+    foreach ($table['fields'] as $f_name => &$field) {
+      // MySQL Specification: If the column is defined as part of a PRIMARY
+      // KEY but not explicitly as NOT NULL, MySQL creates it as a NOT NULL
+      // column (because PRIMARY KEY columns must be NOT NULL), but also
+      // assigns it a DEFAULT clause using the implicit default value.
+      // @see http://dev.mysql.com/doc/refman/5.5/en/data-type-defaults.html
+      // @todo Remove once this is fixed in core.
+      // @see https://www.drupal.org/node/2394069
+      if (in_array($f_name, $primary_key)) {
+        $field['not null'] = TRUE;
+      }
+
+      // Many Schema types can map to the same engine type (e.g. in
+      // PostgresSQL, text:{small,medium,big} are all just text).  When
+      // we inspect the database, we see the common type, but the
+      // reference we are comparing against can have a specific type.
+      // We therefore run the reference's specific type through the
+      // type conversion cycle to get its common type for comparison.
+      //
+      // Sadly, we need a special-case hack for 'serial'.
+      $serial = ($field['type'] == 'serial' ? TRUE : FALSE);
+      $name = isset($table['name']) ? $table['name'] : $t_name;
+      $dbtype = schema_engine_type($field, $name, $f_name);
+      list($field['type'], $field['size']) = schema_schema_type($dbtype, $name, $f_name);
+      if ($serial) {
+        $field['type'] = 'serial';
+      }
+
+      // If an engine-specific type is specified, use it.  XXX $inspect
+      // will contain the schema type for the engine type, if one
+      // exists, whereas dbtype_type contains the engine type.
+      if (isset($field[$_db_type . '_type'])) {
+        $field['type'] = $field[$_db_type . '_type'];
+      }
+
+      // Column comments are trimmed to a specific length by the database schema
+      // layer. Make sure we match the trimmed value, so we can properly compare
+      // actual and declared value.
+      if (!empty($field['description'])) {
+        $field['description'] = $this->inspector->prepareColumnComment($field['description'], FALSE);
       }
     }
   }
