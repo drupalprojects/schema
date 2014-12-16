@@ -5,8 +5,8 @@
  * The Schema module provides functionality built on the Schema API.
  */
 use Drupal\Core\Database\Database;
-use Drupal\schema\Comparison\SchemaComparisonInfoBuilder;
 use Drupal\schema\Comparison\SchemaComparator;
+use Drupal\schema\Comparison\SchemaComparisonInfoBuilder;
 use Drupal\schema\SchemaManager;
 use Drupal\schema\SchemaProviderInterface;
 
@@ -68,7 +68,8 @@ function schema_get_connection_engine_class($connection = 'default') {
  */
 function schema_dbobject($connection = NULL) {
   if (!isset($connection)) {
-    $connection = \Drupal::config('schema.settings')->get('schema_database_connection');
+    $connection = \Drupal::config('schema.settings')
+      ->get('schema_database_connection');
   }
 
   if ($class = schema_get_connection_engine_class($connection)) {
@@ -163,7 +164,7 @@ function schema_phpprint_table($name, $table) {
   return $out;
 }
 
-function schema_phpprint_column($col, $multiline=FALSE) {
+function schema_phpprint_column($col, $multiline = FALSE) {
   $attrs = array();
   $description = isset($col['description']) ? $col['description'] : '';
   unset($col['description']);
@@ -171,7 +172,14 @@ function schema_phpprint_column($col, $multiline=FALSE) {
   if ($col['type'] == 'varchar' || $col['size'] == 'normal') {
     unset($col['size']);
   }
-  foreach (array('type', 'unsigned', 'size', 'length', 'not null', 'default') as $attr) {
+  foreach (array(
+             'type',
+             'unsigned',
+             'size',
+             'length',
+             'not null',
+             'default'
+           ) as $attr) {
     if (isset($col[$attr])) {
       if (is_string($col[$attr])) {
         $attrs[] = "'$attr' => '$col[$attr]'";
@@ -274,7 +282,12 @@ function schema_engine_type($col, $table, $field, $engine = NULL) {
     return $map[$type];
   }
   else {
-    trigger_error(t('@table.@field: no @engine type for schema type @type.', array('@engine' => $engine, '@type' => $type, '@table' => $table, '@field' => $field)), E_USER_WARNING);
+    trigger_error(t('@table.@field: no @engine type for schema type @type.', array(
+          '@engine' => $engine,
+          '@type' => $type,
+          '@table' => $table,
+          '@field' => $field
+        )), E_USER_WARNING);
     return $col['type'];
   }
 }
@@ -289,8 +302,15 @@ function schema_schema_type($type, $table, $field, $engine = NULL) {
     return explode(':', $map[$type]);
   }
   else {
-    if (!\Drupal::config('schema.settings')->get('schema_suppress_type_warnings')) {
-      trigger_error(t('@table.@field: no schema type for @engine type @type.', array('@engine' => $engine, '@type' => $type, '@table' => $table, '@field' => $field)), E_USER_WARNING);
+    if (!\Drupal::config('schema.settings')
+      ->get('schema_suppress_type_warnings')
+    ) {
+      trigger_error(t('@table.@field: no schema type for @engine type @type.', array(
+            '@engine' => $engine,
+            '@type' => $type,
+            '@table' => $table,
+            '@field' => $field
+          )), E_USER_WARNING);
     }
     return array($type, 'normal');
   }
@@ -302,7 +322,7 @@ function schema_schema_type($type, $table, $field, $engine = NULL) {
  * @param $inspect array is compared against it.  If $inspect is NULL, a
  *         schema for the active database is generated and used.
  *
- * @deprecated Returns array structure, for backwards compatibility only.
+ * @deprecated
  */
 function schema_compare_schemas($ref, $inspect = NULL) {
   if (!isset($inspect)) {
@@ -320,9 +340,11 @@ function schema_compare_schemas($ref, $inspect = NULL) {
  * database.
  * @param $inspect if not provided, the database is inspected.
  *
- * @todo Refactor SchemaComparator and call from this function.
+ * @deprecated
  */
 function schema_compare_table($ref, $inspect = NULL) {
+  return; // @todo Refactor SchemaComparator and call from this function.
+
   $_db_type = db_driver();
 
   if (!isset($inspect)) {
@@ -336,124 +358,8 @@ function schema_compare_table($ref, $inspect = NULL) {
     return array('status' => 'missing');
   }
 
-  $reasons = $notes = array();
-  $col_keys = array_flip(array(
-    'description',
-    'type',
-    'serialize',
-    'size',
-    'not null',
-    'default',
-    'length',
-    'unsigned',
-    'precision', 'scale',
-    'binary',
-  ));
-  foreach ($ref['fields'] as $colname => $col) {
-
-    // Many Schema types can map to the same engine type (e.g. in
-    // PostgresSQL, text:{small,medium,big} are all just text).  When
-    // we inspect the database, we see the common type, but the
-    // reference we are comparing against can have a specific type.
-    // We therefore run the reference's specific type through the
-    // type conversion cycle to get its common type for comparison.
-    //
-    // Sadly, we need a special-case hack for 'serial'.
-    $serial = ($col['type'] == 'serial' ? TRUE : FALSE);
-    $name = isset($ref['name']) ? $ref['name'] : '';
-    $dbtype = schema_engine_type($col, $name, $colname);
-    list($col['type'], $col['size']) = schema_schema_type($dbtype, $name, $colname);
-    if ($serial) {
-      $col['type'] = 'serial';
-    }
-
-    // If an engine-specific type is specified, use it.  XXX $inspect
-    // will contain the schema type for the engine type, if one
-    // exists, whereas dbtype_type contains the engine type.
-    if (isset($col[$_db_type . '_type'])) {
-      $col['type'] = $col[$_db_type . '_type'];
-    }
-
-    $col = array_intersect_key($col, $col_keys);
-    if (!isset($inspect['fields'][$colname])) {
-      $reasons[] = "$colname: not in database";
-      continue;
-    }
-
-    // Account for schemas that contain unnecessary 'default' => NULL
-    if (!isset($col['default']) ||
-        (is_null($col['default']) && !isset($inspect['fields'][$colname]['default']))) {
-      unset($col['default']);
-    }
-
-    $kdiffs = array();
-    foreach ($col_keys as $key => $val) {
-
-      if (!(
-          // First part tests that item exists for both and has same value in both places
-           (isset($col[$key]) && !is_null($col[$key]) && $col[$key] !== FALSE
-          && isset($inspect['fields'][$colname][$key]) && $inspect['fields'][$colname][$key] !== FALSE
-          && $col[$key] == $inspect['fields'][$colname][$key] )
-          // Second test is that it does not exist or exists but is null in both places
-       || ((!isset($col[$key]) || is_null($col[$key]) || $col[$key] === FALSE)
-             && (!isset($inspect['fields'][$colname][$key]) || $inspect['fields'][$colname][$key] === FALSE) ) ) ) {
-        // One way or another, difference between the two so note it to explicitly identify it later.
-        $kdiffs[] = $key;
-      }
-    }
-    if (count($kdiffs) != 0) {
-      $reasons[] = array('#markup' => "column $colname - difference" .
-          ( count($kdiffs) > 1 ? 's' : '') . " on: " .
-          implode(', ', $kdiffs) . "<br/>declared: " .
-          schema_phpprint_column($col) . '<br/>actual: ' .
-          schema_phpprint_column($inspect['fields'][$colname]));
-    }
-    unset($inspect['fields'][$colname]);
-  }
-  foreach ($inspect['fields'] as $colname => $col) {
-    $reasons[] = "$colname: unexpected column in database";
-  }
-
-  if (isset($ref['primary key'])) {
-    if (!isset($inspect['primary key'])) {
-      $reasons[] = "primary key: missing in database";
-    }
-    elseif ($ref['primary key'] !== $inspect['primary key']) {
-      $reasons[] = array('#markup' => "primary key:<br />declared: " .
-        schema_phpprint_key($ref['primary key']) . '<br />actual: ' .
-        schema_phpprint_key($inspect['primary key']));
-    }
-  }
-  elseif (isset($inspect['primary key'])) {
-    $reasons[] = "primary key: missing in schema";
-  }
-
-  foreach (array('unique keys', 'indexes') as $type) {
-    if (isset($ref[$type])) {
-      foreach ($ref[$type] as $keyname => $key) {
-        if (!isset($inspect[$type][$keyname])) {
-          $reasons[] = "$type $keyname: missing in database";
-          continue;
-        }
-        // $key is column list
-        if ($key !== $inspect[$type][$keyname]) {
-          $reasons[] = ("$type $keyname:<br />declared: " .
-            schema_phpprint_key($key) . '<br />actual: ' .
-            schema_phpprint_key($inspect[$type][$keyname]));
-        }
-        unset($inspect[$type][$keyname]);
-      }
-    }
-    if (isset($inspect[$type])) {
-      foreach ($inspect[$type] as $keyname => $col) {
-        // this is not an error, the dba might have added it on purpose
-        $notes[] = "$type $keyname: unexpected (not an error)";
-      }
-    }
-  }
-
-  $status = (count($reasons) ? 'different' : 'same');
-  return array('status' => $status, 'reasons' => $reasons, 'notes' => $notes);
+  // Removed comparison code; most of it now resides in
+  // SchemaComparator::compareTable().
 }
 
 /**

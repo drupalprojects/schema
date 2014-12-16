@@ -1,5 +1,6 @@
 <?php
 /**
+ * @file
  * Contains Drupal\schema\Comparison\SchemaComparator.
  */
 
@@ -11,6 +12,8 @@ use Drupal\schema\DatabaseSchemaInspectionInterface;
 
 /**
  * Compares a declared schema array with the complete database schema.
+ *
+ * @todo Extract table schema comparison into separate class which can be used on it's own, e.g. via schema_compare_table().
  */
 class SchemaComparator {
 
@@ -30,6 +33,8 @@ class SchemaComparator {
   protected $result = NULL;
 
   /**
+   * Constructs a new SchemaComparator instance.
+   *
    * @param array $declared_schema
    *   The declared schema.
    * @param DatabaseSchemaInspectionInterface $inspector

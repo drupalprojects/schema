@@ -1,6 +1,6 @@
 schema.settings:
   type: mapping
-  label: Einstellungen
+  label: Settings
   mapping:
     schema_database_connection:
       type: string
