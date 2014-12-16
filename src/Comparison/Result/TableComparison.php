@@ -107,7 +107,7 @@ class TableComparison {
   }
 
   public function addPrimaryKeyDifference($declared, $actual) {
-    $this->addIndexDifferences($this->getTableName(), 'PRIMARY', 'PRIMARY', $declared, $actual);
+    $this->addIndexDifferences('PRIMARY', 'PRIMARY', $declared, $actual);
   }
 
   public function addIndexDifferences($field, $type, $declared_schema, $actual_schema) {
