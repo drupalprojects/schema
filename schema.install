@@ -98,8 +98,5 @@ function schema_requirements($phase) {
  * Implementation of hook_uninstall(),
  */
 function schema_uninstall() {
-  \Drupal::config('schema.settings')->clear('schema_status_report')->save();
-  \Drupal::config('schema.settings')
-    ->clear('schema_suppress_type_warnings')
-    ->save();
+  \Drupal::configFactory()->getEditable('schema.settings')->delete();
 }
