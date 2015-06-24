@@ -20,7 +20,14 @@ class SchemaSettingsForm extends ConfigFormBase {
     return 'schema_settings_form';
   }
 
-    /**
+  /**
+   * {@inheritdoc}
+   */
+  protected function getEditableConfigNames() {
+    return array('schema.settings');
+  }
+
+  /**
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {

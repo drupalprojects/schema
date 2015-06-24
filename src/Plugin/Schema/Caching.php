@@ -38,9 +38,7 @@ class Caching extends PluginBase implements SchemaProviderInterface {
       // If we have a DatabaseBackend, add it's schema information.
       if ($cache instanceof DatabaseBackend) {
         $schema = $cache->schemaDefinition();
-        $module_info = array('module' => 'Core\Cache');
-        $complete_schema['cachetags'] = $schema['cachetags'] + $module_info;
-        $complete_schema['cache_' . $name] = $schema['bin'] + $module_info;
+        $complete_schema['cache_' . $name] = $schema;
       }
     }
     return $complete_schema;
