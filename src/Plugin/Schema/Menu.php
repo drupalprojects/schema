@@ -23,6 +23,9 @@ class Menu extends PluginBase implements SchemaProviderInterface {
    */
   public function get($rebuild = FALSE) {
     $complete_schema = array();
+    /*
+    // TODO: the menu.tree_storage is now private, so need to find another way
+    // to get this table data.
     $menu_storage = \Drupal::service('menu.tree_storage');
     if ($menu_storage instanceof MenuTreeStorage) {
       $reflection = new ReflectionClass(get_class($menu_storage));
@@ -35,6 +38,7 @@ class Menu extends PluginBase implements SchemaProviderInterface {
       $schema = $schema_method->invoke($menu_storage);
       $complete_schema[$table_name] = $schema + array('module' => 'Core\Menu');
     }
+    */
     return $complete_schema;
   }
 }
