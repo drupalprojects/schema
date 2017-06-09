@@ -242,7 +242,7 @@ interface DatabaseSchemaInterface {
    * @throws \Drupal\Core\Database\SchemaObjectExistsException
    *   If the specified table already has an index by that name.
    */
-  public function addIndex($table, $name, $fields);
+  public function addIndex($table, $name, $fields, array $spec);
 
   /**
    * Drop an index.
