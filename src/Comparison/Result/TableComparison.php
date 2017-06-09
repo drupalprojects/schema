@@ -35,7 +35,7 @@ class TableComparison {
     if (isset($this->schema['module'])) {
       return $this->schema['module'];
     }
-    return t('Unknown');
+    return 'unknown';
   }
 
   public function isTableCommentDifferent() {
