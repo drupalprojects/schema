@@ -28,7 +28,7 @@ function schema_compare() {
     'missing' => t('Tables in the schema that are not present in the database.'),
   );
 
-  $schema = drupal_get_schema(NULL, TRUE);
+  $schema = schema_get_schema();
   $info = schema_compare_schemas($schema);
 
   // The info array is keyed by state (same/different/missing/extra/warn). For missing,
@@ -124,7 +124,7 @@ function schema_compare() {
 function schema_describe() {
   $build = array();
 
-  $schema = drupal_get_schema(NULL, TRUE);
+  $schema = schema_get_schema();
   ksort($schema);
   $row_hdrs = array(t('Name'), t('Type[:Size]'), t('Null?'), t('Default'));
 
@@ -196,7 +196,7 @@ function schema_inspect() {
   $mods = module_list();
   sort($mods);
   $mods = array_flip($mods);
-  $schema = drupal_get_schema(NULL, TRUE);
+  $schema = schema_get_schema();
   $inspect = schema_dbobject()->inspect();
   foreach ($inspect as $name => $table) {
     $module = isset($schema[$name]['module']) ? $schema[$name]['module'] : 'Unknown';
@@ -224,7 +224,7 @@ function schema_inspect() {
  * "SQL" menu callback.
  */
 function schema_sql($engine = NULL) {
-  $schema = drupal_get_schema(NULL, TRUE);
+  $schema = schema_get_schema();
   $connection = Database::getConnection();
   $sql = '';
   foreach ($schema as $name => $table) {
@@ -251,7 +251,7 @@ function schema_sql($engine = NULL) {
  * as you need.
  */
 function schema_show() {
-  $schema = drupal_get_schema(NULL, TRUE);
+  $schema = schema_get_schema();
   $show = var_export($schema, 1);
 
   return "<textarea style=\"width:100%\" rows=\"30\">$show</textarea>";
