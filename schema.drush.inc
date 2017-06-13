@@ -71,7 +71,7 @@ function drush_schema_inspect() {
 }
 
 /*
- * Implementats drush_hook_COMMAND_validate().
+ * Implements drush_hook_COMMAND_validate().
  */
 function drush_schema_compare_validate($type) {
 
