@@ -36,7 +36,7 @@ function schema_compare() {
   // Get those out of the way first
   if (isset($info['warn'])) {
     foreach ($info['warn'] as $message) {
-      drupal_set_message($message, 'warning');
+      drupal_set_message(filter_xss($message), 'warning');
     }
     unset($info['warn']);
   }
@@ -156,14 +156,14 @@ function schema_describe() {
         $row[] = filter_xss($desc);
       }
       else {
-        drupal_set_message(_schema_process_description(t('Field {!table}.@field has no description.', array('!table' => $t_name, '@field' => $c_name))), 'warning');
+        drupal_set_message(_schema_process_description(t('Field {@table}.@field has no description.', array('@table' => $t_name, '@field' => $c_name))), 'warning');
         $row[] = t('Description not found.');
       }
       $rows[] = $row;
     }
 
     if (empty($t_spec['description']) || $t_spec['description'] == $default_table_description) {
-      drupal_set_message(_schema_process_description(t('Table {!table} has no description.', array('!table' => $t_name))), 'warning');
+      drupal_set_message(_schema_process_description(t('Table {@table} has no description.', array('@table' => $t_name))), 'warning');
     }
 
     $build[$t_name] = array(
