@@ -191,6 +191,28 @@ class SchemaDatabaseSchema_mysql extends DatabaseSchema_mysql {
       $tables[$r->table_name][$type][$r->index_name][] = $col;
     }
 
+    // Add information about foreign keys by querying tables in the
+    // information_schema. This adds a 'foreign keys' key to the array for each
+    // table.
+    $sql = 'SELECT *
+            FROM information_schema.KEY_COLUMN_USAGE
+            WHERE table_schema = :database';
+    if (isset($table_name)) {
+      $sql .= ' AND table_name = :table';
+    }
+    $res = $this->connection->query($sql, $args);
+    foreach ($res as $r) {
+      if ($r->REFERENCED_TABLE_NAME) {
+        if (empty($tables[$r->TABLE_NAME]['foreign keys'][$r->CONSTRAINT_NAME])) {
+          $tables[$r->TABLE_NAME]['foreign keys'][$r->CONSTRAINT_NAME] = array(
+            'table' => $r->REFERENCED_TABLE_NAME,
+            'columns' => array(),
+          );
+        }
+        $tables[$r->TABLE_NAME]['foreign keys'][$r->CONSTRAINT_NAME]['columns'][$r->COLUMN_NAME] = $r->REFERENCED_COLUMN_NAME;
+      }
+    }
+
     // Now, for tables which we have unprefixed, index $tables by the unprefixed name
     foreach ($tables as $tablename => $table) {
       $newname = $tables[$tablename]['name'];
