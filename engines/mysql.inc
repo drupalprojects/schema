@@ -62,6 +62,20 @@ class SchemaDatabaseSchema_mysql extends DatabaseSchema_mysql {
     return $map;
   }
 
+  /**
+   * Retrieves the schema for the database's actual structure.
+   *
+   * @param $connection
+   *  (optional) The name of a database connection. If omitted, 'default' is
+   *  used.
+   * @param $table_name
+   *  (optional) The name of a table to limit the returned data to. If omitted,
+   *  data on all tables is returned.
+   *
+   * @return
+   *  An array of data about the database, in the same format as used by the
+   *  Schema API.
+   */
   public function inspect($connection = NULL, $table_name = NULL) {
     // Support the deprecated connection parameter.
     if (isset($connection) && $connection != $this->connection->getKey()) {
